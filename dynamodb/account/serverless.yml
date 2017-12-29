@@ -1,0 +1,182 @@
+service: dynamodb-user
+
+provider:
+  name: aws
+  runtime: nodejs6.10
+  stage: ${opt:stage, self:custom.defaultStage}
+  profile: hugy
+  role: ${self:custom.role}
+  region: ap-northeast-1
+
+# Custom Setting
+custom:
+  defaultStage: dev
+  role: arn:aws:iam::335326279392:role/lambda_basic_execution
+  dynamodb:
+    provisioned-capacity-unit:
+      read:
+        default: 2
+      write:
+        default: 1
+    auto-scaling:
+      read:
+        target-utilization: 75.0
+        min: 2
+        max: 1000
+      write:
+        target-utilization: 75.0
+        min: 1
+        max: 500
+
+
+
+# Related AWS resources.
+resources: # CloudFormation template syntax
+  Resources:
+    DynamoDBTableAccount:
+      Type: "AWS::DynamoDB::Table"
+      Properties:
+        TableName: account-${self:provider.stage}
+        AttributeDefinitions:
+          - AttributeName: id
+            AttributeType: S
+          - AttributeName: organization_id
+            AttributeType: S
+        KeySchema:
+          - AttributeName: id
+            KeyType: HASH
+        ProvisionedThroughput:
+          ReadCapacityUnits: ${self:custom.dynamodb.provisioned-capacity-unit.read.default}
+          WriteCapacityUnits: ${self:custom.dynamodb.provisioned-capacity-unit.write.default}
+        StreamSpecification:
+          StreamViewType: NEW_AND_OLD_IMAGES
+        GlobalSecondaryIndexes:
+          - IndexName: account-byorganization-${self:provider.stage}
+            KeySchema:
+              - AttributeName: organization_id
+                KeyType: HASH
+            Projection:
+              ProjectionType: ALL
+            ProvisionedThroughput:
+              ReadCapacityUnits: ${self:custom.dynamodb.provisioned-capacity-unit.read.default}
+              WriteCapacityUnits: ${self:custom.dynamodb.provisioned-capacity-unit.write.default}
+
+    # AutoScaling setting for Account.
+    TableReadCapacityScalableAccount:
+      Type: "AWS::ApplicationAutoScaling::ScalableTarget"
+      Properties:
+        MaxCapacity: ${self:custom.dynamodb.auto-scaling.read.max}
+        MinCapacity: ${self:custom.dynamodb.auto-scaling.read.min}
+        ResourceId:
+          Fn::Join:
+            - /
+            - - table
+              - Ref: DynamoDBTableAccount
+        RoleARN: arn:aws:iam::335326279392:role/meeter_dynamo_auto_scaling # 事前作成済み
+        ScalableDimension: dynamodb:table:ReadCapacityUnits
+        ServiceNamespace: dynamodb
+    TableReadCapacityScalingPolicyAccount:
+      Type : "AWS::ApplicationAutoScaling::ScalingPolicy"
+      Properties:
+        PolicyName: TableReadScalingPolicyAccount
+        PolicyType: TargetTrackingScaling
+        ScalingTargetId:
+          Ref: TableReadCapacityScalableAccount
+        TargetTrackingScalingPolicyConfiguration:
+          PredefinedMetricSpecification:
+            PredefinedMetricType: DynamoDBReadCapacityUtilization
+          ScaleInCooldown: 60
+          ScaleOutCooldown: 60
+          TargetValue: ${self:custom.dynamodb.auto-scaling.read.target-utilization}
+    TableWriteCapacityScalableAccount:
+      Type: "AWS::ApplicationAutoScaling::ScalableTarget"
+      Properties:
+        MaxCapacity: ${self:custom.dynamodb.auto-scaling.write.max}
+        MinCapacity: ${self:custom.dynamodb.auto-scaling.write.min}
+        ResourceId:
+          Fn::Join:
+            - /
+            - - table
+              - Ref: DynamoDBTableAccount
+        RoleARN: arn:aws:iam::335326279392:role/meeter_dynamo_auto_scaling # 事前作成済み
+        ScalableDimension: dynamodb:table:WriteCapacityUnits
+        ServiceNamespace: dynamodb
+    TableWriteCapacityScalingPolicyAccount:
+      Type : "AWS::ApplicationAutoScaling::ScalingPolicy"
+      Properties:
+        PolicyName: TableWriteScalingPolicyAccount
+        PolicyType: TargetTrackingScaling
+        ScalingTargetId:
+          Ref: TableWriteCapacityScalableAccount
+        TargetTrackingScalingPolicyConfiguration:
+          PredefinedMetricSpecification:
+            PredefinedMetricType: DynamoDBWriteCapacityUtilization
+          ScaleInCooldown: 60
+          ScaleOutCooldown: 60
+          TargetValue: ${self:custom.dynamodb.auto-scaling.write.target-utilization}
+    GSIReadCapacityScalableAccount:
+      Type: "AWS::ApplicationAutoScaling::ScalableTarget"
+      Properties:
+        MaxCapacity: ${self:custom.dynamodb.auto-scaling.read.max}
+        MinCapacity: ${self:custom.dynamodb.auto-scaling.read.min}
+        ResourceId:
+          Fn::Join:
+            - /
+            - - table
+              - Ref: DynamoDBTableAccount
+              - index
+              - account-byorganization-${self:provider.stage}
+        RoleARN: arn:aws:iam::335326279392:role/meeter_dynamo_auto_scaling # 事前作成済み
+        ScalableDimension: dynamodb:index:ReadCapacityUnits
+        ServiceNamespace: dynamodb
+    GSIReadCapacityScalingPolicyAccount:
+      Type : "AWS::ApplicationAutoScaling::ScalingPolicy"
+      Properties:
+        PolicyName: GSIReadScalingPolicyAccount
+        PolicyType: TargetTrackingScaling
+        ScalingTargetId:
+          Ref: GSIReadCapacityScalableAccount
+        TargetTrackingScalingPolicyConfiguration:
+          PredefinedMetricSpecification:
+            PredefinedMetricType: DynamoDBReadCapacityUtilization
+          ScaleInCooldown: 60
+          ScaleOutCooldown: 60
+          TargetValue: ${self:custom.dynamodb.auto-scaling.read.target-utilization}
+    GSIWriteCapacityScalableAccount:
+      Type: "AWS::ApplicationAutoScaling::ScalableTarget"
+      Properties:
+        MaxCapacity: ${self:custom.dynamodb.auto-scaling.write.max}
+        MinCapacity: ${self:custom.dynamodb.auto-scaling.write.min}
+        ResourceId:
+          Fn::Join:
+            - /
+            - - table
+              - Ref: DynamoDBTableAccount
+              - index
+              - account-byorganization-${self:provider.stage}
+        RoleARN: arn:aws:iam::335326279392:role/meeter_dynamo_auto_scaling # 事前作成済み
+        ScalableDimension: dynamodb:index:WriteCapacityUnits
+        ServiceNamespace: dynamodb
+    GSIWriteCapacityScalingPolicyAccount:
+      Type : "AWS::ApplicationAutoScaling::ScalingPolicy"
+      Properties:
+        PolicyName: GSIWriteScalingPolicyAccount
+        PolicyType: TargetTrackingScaling
+        ScalingTargetId:
+          Ref: GSIWriteCapacityScalableAccount
+        TargetTrackingScalingPolicyConfiguration:
+          PredefinedMetricSpecification:
+            PredefinedMetricType: DynamoDBWriteCapacityUtilization
+          ScaleInCooldown: 60
+          ScaleOutCooldown: 60
+          TargetValue: ${self:custom.dynamodb.auto-scaling.write.target-utilization}
+
+  Outputs:
+    DynamoDBStreamAccount:
+      Description: DynamoDB Stream ARN of Account.
+      Value:
+        Fn::GetAtt:
+          - DynamoDBTableAccount
+          - StreamArn
+      Export:
+        Name: dynamodb-${self:provider.stage}-DynamoDBStreamAccount

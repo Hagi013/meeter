@@ -1,0 +1,526 @@
+{
+  "service": {
+    "service": "dynamodb-schedule",
+    "serviceObject": {
+      "name": "dynamodb-schedule"
+    },
+    "provider": {
+      "stage": "dev",
+      "region": "ap-northeast-1",
+      "variableSyntax": "\\${([ ~:a-zA-Z0-9._'\",\\-\\/\\(\\)]+?)}",
+      "name": "aws",
+      "runtime": "nodejs6.10",
+      "profile": "hugy",
+      "role": "arn:aws:iam::335326279392:role/lambda_basic_execution",
+      "versionFunctions": true,
+      "remoteFunctionData": null,
+      "compiledCloudFormationTemplate": {
+        "AWSTemplateFormatVersion": "2010-09-09",
+        "Description": "The AWS CloudFormation template for this Serverless application",
+        "Resources": {
+          "ServerlessDeploymentBucket": {
+            "Type": "AWS::S3::Bucket"
+          },
+          "DynamoDBTableSchedule": {
+            "Type": "AWS::DynamoDB::Table",
+            "Properties": {
+              "TableName": "schedule-dev",
+              "AttributeDefinitions": [
+                {
+                  "AttributeName": "id",
+                  "AttributeType": "S"
+                },
+                {
+                  "AttributeName": "organization_id",
+                  "AttributeType": "S"
+                }
+              ],
+              "KeySchema": [
+                {
+                  "AttributeName": "id",
+                  "KeyType": "HASH"
+                }
+              ],
+              "ProvisionedThroughput": {
+                "ReadCapacityUnits": 2,
+                "WriteCapacityUnits": 1
+              },
+              "StreamSpecification": {
+                "StreamViewType": "NEW_AND_OLD_IMAGES"
+              },
+              "GlobalSecondaryIndexes": [
+                {
+                  "IndexName": "schedule-byorganization-dev",
+                  "KeySchema": [
+                    {
+                      "AttributeName": "organization_id",
+                      "KeyType": "HASH"
+                    }
+                  ],
+                  "Projection": {
+                    "ProjectionType": "ALL"
+                  },
+                  "ProvisionedThroughput": {
+                    "ReadCapacityUnits": 2,
+                    "WriteCapacityUnits": 1
+                  }
+                }
+              ]
+            }
+          },
+          "TableReadCapacityScalableSchedule": {
+            "Type": "AWS::ApplicationAutoScaling::ScalableTarget",
+            "Properties": {
+              "MaxCapacity": 1000,
+              "MinCapacity": 2,
+              "ResourceId": {
+                "Fn::Join": [
+                  "/",
+                  [
+                    "table",
+                    {
+                      "Ref": "DynamoDBTableSchedule"
+                    }
+                  ]
+                ]
+              },
+              "RoleARN": "arn:aws:iam::335326279392:role/meeter_dynamo_auto_scaling",
+              "ScalableDimension": "dynamodb:table:ReadCapacityUnits",
+              "ServiceNamespace": "dynamodb"
+            }
+          },
+          "TableReadCapacityScalingPolicySchedule": {
+            "Type": "AWS::ApplicationAutoScaling::ScalingPolicy",
+            "Properties": {
+              "PolicyName": "TableReadScalingPolicySchedule",
+              "PolicyType": "TargetTrackingScaling",
+              "ScalingTargetId": {
+                "Ref": "TableReadCapacityScalableSchedule"
+              },
+              "TargetTrackingScalingPolicyConfiguration": {
+                "PredefinedMetricSpecification": {
+                  "PredefinedMetricType": "DynamoDBReadCapacityUtilization"
+                },
+                "ScaleInCooldown": 60,
+                "ScaleOutCooldown": 60,
+                "TargetValue": 75
+              }
+            }
+          },
+          "TableWriteCapacityScalableSchedule": {
+            "Type": "AWS::ApplicationAutoScaling::ScalableTarget",
+            "Properties": {
+              "MaxCapacity": 500,
+              "MinCapacity": 1,
+              "ResourceId": {
+                "Fn::Join": [
+                  "/",
+                  [
+                    "table",
+                    {
+                      "Ref": "DynamoDBTableSchedule"
+                    }
+                  ]
+                ]
+              },
+              "RoleARN": "arn:aws:iam::335326279392:role/meeter_dynamo_auto_scaling",
+              "ScalableDimension": "dynamodb:table:WriteCapacityUnits",
+              "ServiceNamespace": "dynamodb"
+            }
+          },
+          "TableWriteCapacityScalingPolicySchedule": {
+            "Type": "AWS::ApplicationAutoScaling::ScalingPolicy",
+            "Properties": {
+              "PolicyName": "TableWriteScalingPolicySchedule",
+              "PolicyType": "TargetTrackingScaling",
+              "ScalingTargetId": {
+                "Ref": "TableWriteCapacityScalableSchedule"
+              },
+              "TargetTrackingScalingPolicyConfiguration": {
+                "PredefinedMetricSpecification": {
+                  "PredefinedMetricType": "DynamoDBWriteCapacityUtilization"
+                },
+                "ScaleInCooldown": 60,
+                "ScaleOutCooldown": 60,
+                "TargetValue": 75
+              }
+            }
+          },
+          "GSIReadCapacityScalableSchedule": {
+            "Type": "AWS::ApplicationAutoScaling::ScalableTarget",
+            "Properties": {
+              "MaxCapacity": 1000,
+              "MinCapacity": 2,
+              "ResourceId": {
+                "Fn::Join": [
+                  "/",
+                  [
+                    "table",
+                    {
+                      "Ref": "DynamoDBTableSchedule"
+                    },
+                    "index",
+                    "schedule-byorganization-dev"
+                  ]
+                ]
+              },
+              "RoleARN": "arn:aws:iam::335326279392:role/meeter_dynamo_auto_scaling",
+              "ScalableDimension": "dynamodb:index:ReadCapacityUnits",
+              "ServiceNamespace": "dynamodb"
+            }
+          },
+          "GSIReadCapacityScalingPolicySchedule": {
+            "Type": "AWS::ApplicationAutoScaling::ScalingPolicy",
+            "Properties": {
+              "PolicyName": "GSIReadScalingPolicySchedule",
+              "PolicyType": "TargetTrackingScaling",
+              "ScalingTargetId": {
+                "Ref": "GSIReadCapacityScalableSchedule"
+              },
+              "TargetTrackingScalingPolicyConfiguration": {
+                "PredefinedMetricSpecification": {
+                  "PredefinedMetricType": "DynamoDBReadCapacityUtilization"
+                },
+                "ScaleInCooldown": 60,
+                "ScaleOutCooldown": 60,
+                "TargetValue": 75
+              }
+            }
+          },
+          "GSIWriteCapacityScalableSchedule": {
+            "Type": "AWS::ApplicationAutoScaling::ScalableTarget",
+            "Properties": {
+              "MaxCapacity": 500,
+              "MinCapacity": 1,
+              "ResourceId": {
+                "Fn::Join": [
+                  "/",
+                  [
+                    "table",
+                    {
+                      "Ref": "DynamoDBTableSchedule"
+                    },
+                    "index",
+                    "schedule-byorganization-dev"
+                  ]
+                ]
+              },
+              "RoleARN": "arn:aws:iam::335326279392:role/meeter_dynamo_auto_scaling",
+              "ScalableDimension": "dynamodb:index:WriteCapacityUnits",
+              "ServiceNamespace": "dynamodb"
+            }
+          },
+          "GSIWriteCapacityScalingPolicySchedule": {
+            "Type": "AWS::ApplicationAutoScaling::ScalingPolicy",
+            "Properties": {
+              "PolicyName": "GSIWriteScalingPolicySchedule",
+              "PolicyType": "TargetTrackingScaling",
+              "ScalingTargetId": {
+                "Ref": "GSIWriteCapacityScalableSchedule"
+              },
+              "TargetTrackingScalingPolicyConfiguration": {
+                "PredefinedMetricSpecification": {
+                  "PredefinedMetricType": "DynamoDBWriteCapacityUtilization"
+                },
+                "ScaleInCooldown": 60,
+                "ScaleOutCooldown": 60,
+                "TargetValue": 75
+              }
+            }
+          }
+        },
+        "Outputs": {
+          "ServerlessDeploymentBucketName": {
+            "Value": {
+              "Ref": "ServerlessDeploymentBucket"
+            }
+          },
+          "DynamoDBStreamSchedule": {
+            "Description": "DynamoDB Stream ARN of Schedule.",
+            "Value": {
+              "Fn::GetAtt": [
+                "DynamoDBTableSchedule",
+                "StreamArn"
+              ]
+            },
+            "Export": {
+              "Name": "dynamodb-dev-DynamoDBStreamSchedule"
+            }
+          }
+        }
+      },
+      "coreCloudFormationTemplate": {
+        "AWSTemplateFormatVersion": "2010-09-09",
+        "Description": "The AWS CloudFormation template for this Serverless application",
+        "Resources": {
+          "ServerlessDeploymentBucket": {
+            "Type": "AWS::S3::Bucket"
+          }
+        },
+        "Outputs": {
+          "ServerlessDeploymentBucketName": {
+            "Value": {
+              "Ref": "ServerlessDeploymentBucket"
+            }
+          }
+        }
+      }
+    },
+    "custom": {
+      "defaultStage": "dev",
+      "role": "arn:aws:iam::335326279392:role/lambda_basic_execution",
+      "dynamodb": {
+        "provisioned-capacity-unit": {
+          "read": {
+            "default": 2
+          },
+          "write": {
+            "default": 1
+          }
+        },
+        "auto-scaling": {
+          "read": {
+            "target-utilization": 75,
+            "min": 2,
+            "max": 1000
+          },
+          "write": {
+            "target-utilization": 75,
+            "min": 1,
+            "max": 500
+          }
+        }
+      }
+    },
+    "functions": {},
+    "resources": {
+      "Resources": {
+        "DynamoDBTableSchedule": {
+          "Type": "AWS::DynamoDB::Table",
+          "Properties": {
+            "TableName": "schedule-dev",
+            "AttributeDefinitions": [
+              {
+                "AttributeName": "id",
+                "AttributeType": "S"
+              },
+              {
+                "AttributeName": "organization_id",
+                "AttributeType": "S"
+              }
+            ],
+            "KeySchema": [
+              {
+                "AttributeName": "id",
+                "KeyType": "HASH"
+              }
+            ],
+            "ProvisionedThroughput": {
+              "ReadCapacityUnits": 2,
+              "WriteCapacityUnits": 1
+            },
+            "StreamSpecification": {
+              "StreamViewType": "NEW_AND_OLD_IMAGES"
+            },
+            "GlobalSecondaryIndexes": [
+              {
+                "IndexName": "schedule-byorganization-dev",
+                "KeySchema": [
+                  {
+                    "AttributeName": "organization_id",
+                    "KeyType": "HASH"
+                  }
+                ],
+                "Projection": {
+                  "ProjectionType": "ALL"
+                },
+                "ProvisionedThroughput": {
+                  "ReadCapacityUnits": 2,
+                  "WriteCapacityUnits": 1
+                }
+              }
+            ]
+          }
+        },
+        "TableReadCapacityScalableSchedule": {
+          "Type": "AWS::ApplicationAutoScaling::ScalableTarget",
+          "Properties": {
+            "MaxCapacity": 1000,
+            "MinCapacity": 2,
+            "ResourceId": {
+              "Fn::Join": [
+                "/",
+                [
+                  "table",
+                  {
+                    "Ref": "DynamoDBTableSchedule"
+                  }
+                ]
+              ]
+            },
+            "RoleARN": "arn:aws:iam::335326279392:role/meeter_dynamo_auto_scaling",
+            "ScalableDimension": "dynamodb:table:ReadCapacityUnits",
+            "ServiceNamespace": "dynamodb"
+          }
+        },
+        "TableReadCapacityScalingPolicySchedule": {
+          "Type": "AWS::ApplicationAutoScaling::ScalingPolicy",
+          "Properties": {
+            "PolicyName": "TableReadScalingPolicySchedule",
+            "PolicyType": "TargetTrackingScaling",
+            "ScalingTargetId": {
+              "Ref": "TableReadCapacityScalableSchedule"
+            },
+            "TargetTrackingScalingPolicyConfiguration": {
+              "PredefinedMetricSpecification": {
+                "PredefinedMetricType": "DynamoDBReadCapacityUtilization"
+              },
+              "ScaleInCooldown": 60,
+              "ScaleOutCooldown": 60,
+              "TargetValue": 75
+            }
+          }
+        },
+        "TableWriteCapacityScalableSchedule": {
+          "Type": "AWS::ApplicationAutoScaling::ScalableTarget",
+          "Properties": {
+            "MaxCapacity": 500,
+            "MinCapacity": 1,
+            "ResourceId": {
+              "Fn::Join": [
+                "/",
+                [
+                  "table",
+                  {
+                    "Ref": "DynamoDBTableSchedule"
+                  }
+                ]
+              ]
+            },
+            "RoleARN": "arn:aws:iam::335326279392:role/meeter_dynamo_auto_scaling",
+            "ScalableDimension": "dynamodb:table:WriteCapacityUnits",
+            "ServiceNamespace": "dynamodb"
+          }
+        },
+        "TableWriteCapacityScalingPolicySchedule": {
+          "Type": "AWS::ApplicationAutoScaling::ScalingPolicy",
+          "Properties": {
+            "PolicyName": "TableWriteScalingPolicySchedule",
+            "PolicyType": "TargetTrackingScaling",
+            "ScalingTargetId": {
+              "Ref": "TableWriteCapacityScalableSchedule"
+            },
+            "TargetTrackingScalingPolicyConfiguration": {
+              "PredefinedMetricSpecification": {
+                "PredefinedMetricType": "DynamoDBWriteCapacityUtilization"
+              },
+              "ScaleInCooldown": 60,
+              "ScaleOutCooldown": 60,
+              "TargetValue": 75
+            }
+          }
+        },
+        "GSIReadCapacityScalableSchedule": {
+          "Type": "AWS::ApplicationAutoScaling::ScalableTarget",
+          "Properties": {
+            "MaxCapacity": 1000,
+            "MinCapacity": 2,
+            "ResourceId": {
+              "Fn::Join": [
+                "/",
+                [
+                  "table",
+                  {
+                    "Ref": "DynamoDBTableSchedule"
+                  },
+                  "index",
+                  "schedule-byorganization-dev"
+                ]
+              ]
+            },
+            "RoleARN": "arn:aws:iam::335326279392:role/meeter_dynamo_auto_scaling",
+            "ScalableDimension": "dynamodb:index:ReadCapacityUnits",
+            "ServiceNamespace": "dynamodb"
+          }
+        },
+        "GSIReadCapacityScalingPolicySchedule": {
+          "Type": "AWS::ApplicationAutoScaling::ScalingPolicy",
+          "Properties": {
+            "PolicyName": "GSIReadScalingPolicySchedule",
+            "PolicyType": "TargetTrackingScaling",
+            "ScalingTargetId": {
+              "Ref": "GSIReadCapacityScalableSchedule"
+            },
+            "TargetTrackingScalingPolicyConfiguration": {
+              "PredefinedMetricSpecification": {
+                "PredefinedMetricType": "DynamoDBReadCapacityUtilization"
+              },
+              "ScaleInCooldown": 60,
+              "ScaleOutCooldown": 60,
+              "TargetValue": 75
+            }
+          }
+        },
+        "GSIWriteCapacityScalableSchedule": {
+          "Type": "AWS::ApplicationAutoScaling::ScalableTarget",
+          "Properties": {
+            "MaxCapacity": 500,
+            "MinCapacity": 1,
+            "ResourceId": {
+              "Fn::Join": [
+                "/",
+                [
+                  "table",
+                  {
+                    "Ref": "DynamoDBTableSchedule"
+                  },
+                  "index",
+                  "schedule-byorganization-dev"
+                ]
+              ]
+            },
+            "RoleARN": "arn:aws:iam::335326279392:role/meeter_dynamo_auto_scaling",
+            "ScalableDimension": "dynamodb:index:WriteCapacityUnits",
+            "ServiceNamespace": "dynamodb"
+          }
+        },
+        "GSIWriteCapacityScalingPolicySchedule": {
+          "Type": "AWS::ApplicationAutoScaling::ScalingPolicy",
+          "Properties": {
+            "PolicyName": "GSIWriteScalingPolicySchedule",
+            "PolicyType": "TargetTrackingScaling",
+            "ScalingTargetId": {
+              "Ref": "GSIWriteCapacityScalableSchedule"
+            },
+            "TargetTrackingScalingPolicyConfiguration": {
+              "PredefinedMetricSpecification": {
+                "PredefinedMetricType": "DynamoDBWriteCapacityUtilization"
+              },
+              "ScaleInCooldown": 60,
+              "ScaleOutCooldown": 60,
+              "TargetValue": 75
+            }
+          }
+        }
+      },
+      "Outputs": {
+        "DynamoDBStreamSchedule": {
+          "Description": "DynamoDB Stream ARN of Schedule.",
+          "Value": {
+            "Fn::GetAtt": [
+              "DynamoDBTableSchedule",
+              "StreamArn"
+            ]
+          },
+          "Export": {
+            "Name": "dynamodb-dev-DynamoDBStreamSchedule"
+          }
+        }
+      }
+    }
+  },
+  "package": {
+    "artifactDirectoryName": "serverless/dynamodb-schedule/dev/1511608652917-2017-11-25T11:17:32.917Z",
+    "artifact": ""
+  }
+}

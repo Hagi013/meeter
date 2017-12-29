@@ -1,0 +1,235 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Description": "The AWS CloudFormation template for this Serverless application",
+  "Resources": {
+    "ServerlessDeploymentBucket": {
+      "Type": "AWS::S3::Bucket"
+    },
+    "DynamoDBTableAccount": {
+      "Type": "AWS::DynamoDB::Table",
+      "Properties": {
+        "TableName": "account-dev",
+        "AttributeDefinitions": [
+          {
+            "AttributeName": "id",
+            "AttributeType": "S"
+          },
+          {
+            "AttributeName": "organization_id",
+            "AttributeType": "S"
+          }
+        ],
+        "KeySchema": [
+          {
+            "AttributeName": "id",
+            "KeyType": "HASH"
+          }
+        ],
+        "ProvisionedThroughput": {
+          "ReadCapacityUnits": 2,
+          "WriteCapacityUnits": 1
+        },
+        "StreamSpecification": {
+          "StreamViewType": "NEW_AND_OLD_IMAGES"
+        },
+        "GlobalSecondaryIndexes": [
+          {
+            "IndexName": "account-byorganization-dev",
+            "KeySchema": [
+              {
+                "AttributeName": "organization_id",
+                "KeyType": "HASH"
+              }
+            ],
+            "Projection": {
+              "ProjectionType": "ALL"
+            },
+            "ProvisionedThroughput": {
+              "ReadCapacityUnits": 2,
+              "WriteCapacityUnits": 1
+            }
+          }
+        ]
+      }
+    },
+    "TableReadCapacityScalableAccount": {
+      "Type": "AWS::ApplicationAutoScaling::ScalableTarget",
+      "Properties": {
+        "MaxCapacity": 1000,
+        "MinCapacity": 2,
+        "ResourceId": {
+          "Fn::Join": [
+            "/",
+            [
+              "table",
+              {
+                "Ref": "DynamoDBTableAccount"
+              }
+            ]
+          ]
+        },
+        "RoleARN": "arn:aws:iam::335326279392:role/meeter_dynamo_auto_scaling",
+        "ScalableDimension": "dynamodb:table:ReadCapacityUnits",
+        "ServiceNamespace": "dynamodb"
+      }
+    },
+    "TableReadCapacityScalingPolicyAccount": {
+      "Type": "AWS::ApplicationAutoScaling::ScalingPolicy",
+      "Properties": {
+        "PolicyName": "TableReadScalingPolicyAccount",
+        "PolicyType": "TargetTrackingScaling",
+        "ScalingTargetId": {
+          "Ref": "TableReadCapacityScalableAccount"
+        },
+        "TargetTrackingScalingPolicyConfiguration": {
+          "PredefinedMetricSpecification": {
+            "PredefinedMetricType": "DynamoDBReadCapacityUtilization"
+          },
+          "ScaleInCooldown": 60,
+          "ScaleOutCooldown": 60,
+          "TargetValue": 75
+        }
+      }
+    },
+    "TableWriteCapacityScalableAccount": {
+      "Type": "AWS::ApplicationAutoScaling::ScalableTarget",
+      "Properties": {
+        "MaxCapacity": 500,
+        "MinCapacity": 1,
+        "ResourceId": {
+          "Fn::Join": [
+            "/",
+            [
+              "table",
+              {
+                "Ref": "DynamoDBTableAccount"
+              }
+            ]
+          ]
+        },
+        "RoleARN": "arn:aws:iam::335326279392:role/meeter_dynamo_auto_scaling",
+        "ScalableDimension": "dynamodb:table:WriteCapacityUnits",
+        "ServiceNamespace": "dynamodb"
+      }
+    },
+    "TableWriteCapacityScalingPolicyAccount": {
+      "Type": "AWS::ApplicationAutoScaling::ScalingPolicy",
+      "Properties": {
+        "PolicyName": "TableWriteScalingPolicyAccount",
+        "PolicyType": "TargetTrackingScaling",
+        "ScalingTargetId": {
+          "Ref": "TableWriteCapacityScalableAccount"
+        },
+        "TargetTrackingScalingPolicyConfiguration": {
+          "PredefinedMetricSpecification": {
+            "PredefinedMetricType": "DynamoDBWriteCapacityUtilization"
+          },
+          "ScaleInCooldown": 60,
+          "ScaleOutCooldown": 60,
+          "TargetValue": 75
+        }
+      }
+    },
+    "GSIReadCapacityScalableAccount": {
+      "Type": "AWS::ApplicationAutoScaling::ScalableTarget",
+      "Properties": {
+        "MaxCapacity": 1000,
+        "MinCapacity": 2,
+        "ResourceId": {
+          "Fn::Join": [
+            "/",
+            [
+              "table",
+              {
+                "Ref": "DynamoDBTableAccount"
+              },
+              "index",
+              "account-byorganization-dev"
+            ]
+          ]
+        },
+        "RoleARN": "arn:aws:iam::335326279392:role/meeter_dynamo_auto_scaling",
+        "ScalableDimension": "dynamodb:index:ReadCapacityUnits",
+        "ServiceNamespace": "dynamodb"
+      }
+    },
+    "GSIReadCapacityScalingPolicyAccount": {
+      "Type": "AWS::ApplicationAutoScaling::ScalingPolicy",
+      "Properties": {
+        "PolicyName": "GSIReadScalingPolicyAccount",
+        "PolicyType": "TargetTrackingScaling",
+        "ScalingTargetId": {
+          "Ref": "GSIReadCapacityScalableAccount"
+        },
+        "TargetTrackingScalingPolicyConfiguration": {
+          "PredefinedMetricSpecification": {
+            "PredefinedMetricType": "DynamoDBReadCapacityUtilization"
+          },
+          "ScaleInCooldown": 60,
+          "ScaleOutCooldown": 60,
+          "TargetValue": 75
+        }
+      }
+    },
+    "GSIWriteCapacityScalableAccount": {
+      "Type": "AWS::ApplicationAutoScaling::ScalableTarget",
+      "Properties": {
+        "MaxCapacity": 500,
+        "MinCapacity": 1,
+        "ResourceId": {
+          "Fn::Join": [
+            "/",
+            [
+              "table",
+              {
+                "Ref": "DynamoDBTableAccount"
+              },
+              "index",
+              "account-byorganization-dev"
+            ]
+          ]
+        },
+        "RoleARN": "arn:aws:iam::335326279392:role/meeter_dynamo_auto_scaling",
+        "ScalableDimension": "dynamodb:index:WriteCapacityUnits",
+        "ServiceNamespace": "dynamodb"
+      }
+    },
+    "GSIWriteCapacityScalingPolicyAccount": {
+      "Type": "AWS::ApplicationAutoScaling::ScalingPolicy",
+      "Properties": {
+        "PolicyName": "GSIWriteScalingPolicyAccount",
+        "PolicyType": "TargetTrackingScaling",
+        "ScalingTargetId": {
+          "Ref": "GSIWriteCapacityScalableAccount"
+        },
+        "TargetTrackingScalingPolicyConfiguration": {
+          "PredefinedMetricSpecification": {
+            "PredefinedMetricType": "DynamoDBWriteCapacityUtilization"
+          },
+          "ScaleInCooldown": 60,
+          "ScaleOutCooldown": 60,
+          "TargetValue": 75
+        }
+      }
+    }
+  },
+  "Outputs": {
+    "ServerlessDeploymentBucketName": {
+      "Value": {
+        "Ref": "ServerlessDeploymentBucket"
+      }
+    },
+    "DynamoDBStreamAccount": {
+      "Description": "DynamoDB Stream ARN of Account.",
+      "Value": {
+        "Fn::GetAtt": [
+          "DynamoDBTableAccount",
+          "StreamArn"
+        ]
+      },
+      "Export": {
+        "Name": "dynamodb-dev-DynamoDBStreamAccount"
+      }
+    }
+  }
+}

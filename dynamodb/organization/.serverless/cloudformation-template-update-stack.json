@@ -1,0 +1,131 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Description": "The AWS CloudFormation template for this Serverless application",
+  "Resources": {
+    "ServerlessDeploymentBucket": {
+      "Type": "AWS::S3::Bucket"
+    },
+    "DynamoDBTableOrganization": {
+      "Type": "AWS::DynamoDB::Table",
+      "Properties": {
+        "TableName": "organization-dev",
+        "AttributeDefinitions": [
+          {
+            "AttributeName": "id",
+            "AttributeType": "S"
+          }
+        ],
+        "KeySchema": [
+          {
+            "AttributeName": "id",
+            "KeyType": "HASH"
+          }
+        ],
+        "ProvisionedThroughput": {
+          "ReadCapacityUnits": 2,
+          "WriteCapacityUnits": 1
+        },
+        "StreamSpecification": {
+          "StreamViewType": "NEW_AND_OLD_IMAGES"
+        }
+      }
+    },
+    "TableReadCapacityScalableOrganization": {
+      "Type": "AWS::ApplicationAutoScaling::ScalableTarget",
+      "Properties": {
+        "MaxCapacity": 1000,
+        "MinCapacity": 2,
+        "ResourceId": {
+          "Fn::Join": [
+            "/",
+            [
+              "table",
+              {
+                "Ref": "DynamoDBTableOrganization"
+              }
+            ]
+          ]
+        },
+        "RoleARN": "arn:aws:iam::335326279392:role/meeter_dynamo_auto_scaling",
+        "ScalableDimension": "dynamodb:table:ReadCapacityUnits",
+        "ServiceNamespace": "dynamodb"
+      }
+    },
+    "TableReadCapacityScalingPolicyOrganization": {
+      "Type": "AWS::ApplicationAutoScaling::ScalingPolicy",
+      "Properties": {
+        "PolicyName": "TableReadScalingPolicyOrganization",
+        "PolicyType": "TargetTrackingScaling",
+        "ScalingTargetId": {
+          "Ref": "TableReadCapacityScalableOrganization"
+        },
+        "TargetTrackingScalingPolicyConfiguration": {
+          "PredefinedMetricSpecification": {
+            "PredefinedMetricType": "DynamoDBReadCapacityUtilization"
+          },
+          "ScaleInCooldown": 60,
+          "ScaleOutCooldown": 60,
+          "TargetValue": 75
+        }
+      }
+    },
+    "TableWriteCapacityScalableOrganization": {
+      "Type": "AWS::ApplicationAutoScaling::ScalableTarget",
+      "Properties": {
+        "MaxCapacity": 500,
+        "MinCapacity": 1,
+        "ResourceId": {
+          "Fn::Join": [
+            "/",
+            [
+              "table",
+              {
+                "Ref": "DynamoDBTableOrganization"
+              }
+            ]
+          ]
+        },
+        "RoleARN": "arn:aws:iam::335326279392:role/meeter_dynamo_auto_scaling",
+        "ScalableDimension": "dynamodb:table:WriteCapacityUnits",
+        "ServiceNamespace": "dynamodb"
+      }
+    },
+    "TableWriteCapacityScalingPolicyUOrganization": {
+      "Type": "AWS::ApplicationAutoScaling::ScalingPolicy",
+      "Properties": {
+        "PolicyName": "TableWriteScalingPolicyOrganization",
+        "PolicyType": "TargetTrackingScaling",
+        "ScalingTargetId": {
+          "Ref": "TableWriteCapacityScalableOrganization"
+        },
+        "TargetTrackingScalingPolicyConfiguration": {
+          "PredefinedMetricSpecification": {
+            "PredefinedMetricType": "DynamoDBWriteCapacityUtilization"
+          },
+          "ScaleInCooldown": 60,
+          "ScaleOutCooldown": 60,
+          "TargetValue": 75
+        }
+      }
+    }
+  },
+  "Outputs": {
+    "ServerlessDeploymentBucketName": {
+      "Value": {
+        "Ref": "ServerlessDeploymentBucket"
+      }
+    },
+    "DynamoDBStreamOrganization": {
+      "Description": "DynamoDB Stream ARN of Organization.",
+      "Value": {
+        "Fn::GetAtt": [
+          "DynamoDBTableOrganization",
+          "StreamArn"
+        ]
+      },
+      "Export": {
+        "Name": "dynamodb-dev-DynamoDBStreamOrganization"
+      }
+    }
+  }
+}

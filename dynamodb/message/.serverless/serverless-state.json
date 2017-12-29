@@ -1,0 +1,721 @@
+{
+  "service": {
+    "service": "dynamodb-message",
+    "serviceObject": {
+      "name": "dynamodb-message"
+    },
+    "provider": {
+      "stage": "dev",
+      "region": "ap-northeast-1",
+      "variableSyntax": "\\${([ ~:a-zA-Z0-9._'\",\\-\\/\\(\\)]+?)}",
+      "name": "aws",
+      "runtime": "nodejs6.10",
+      "profile": "hugy",
+      "role": "arn:aws:iam::335326279392:role/lambda_basic_execution",
+      "versionFunctions": true,
+      "remoteFunctionData": null,
+      "compiledCloudFormationTemplate": {
+        "AWSTemplateFormatVersion": "2010-09-09",
+        "Description": "The AWS CloudFormation template for this Serverless application",
+        "Resources": {
+          "ServerlessDeploymentBucket": {
+            "Type": "AWS::S3::Bucket"
+          },
+          "DynamoDBTableMessage": {
+            "Type": "AWS::DynamoDB::Table",
+            "Properties": {
+              "TableName": "message-dev",
+              "AttributeDefinitions": [
+                {
+                  "AttributeName": "id",
+                  "AttributeType": "S"
+                },
+                {
+                  "AttributeName": "from_id",
+                  "AttributeType": "S"
+                },
+                {
+                  "AttributeName": "to_id",
+                  "AttributeType": "S"
+                }
+              ],
+              "KeySchema": [
+                {
+                  "AttributeName": "id",
+                  "KeyType": "HASH"
+                }
+              ],
+              "ProvisionedThroughput": {
+                "ReadCapacityUnits": 2,
+                "WriteCapacityUnits": 1
+              },
+              "StreamSpecification": {
+                "StreamViewType": "NEW_AND_OLD_IMAGES"
+              },
+              "GlobalSecondaryIndexes": [
+                {
+                  "IndexName": "message-byfrom-dev",
+                  "KeySchema": [
+                    {
+                      "AttributeName": "from_id",
+                      "KeyType": "HASH"
+                    },
+                    {
+                      "AttributeName": "to_id",
+                      "KeyType": "RANGE"
+                    }
+                  ],
+                  "Projection": {
+                    "ProjectionType": "ALL"
+                  },
+                  "ProvisionedThroughput": {
+                    "ReadCapacityUnits": 2,
+                    "WriteCapacityUnits": 1
+                  }
+                },
+                {
+                  "IndexName": "message-byto-dev",
+                  "KeySchema": [
+                    {
+                      "AttributeName": "to_id",
+                      "KeyType": "HASH"
+                    },
+                    {
+                      "AttributeName": "from_id",
+                      "KeyType": "RANGE"
+                    }
+                  ],
+                  "Projection": {
+                    "ProjectionType": "ALL"
+                  },
+                  "ProvisionedThroughput": {
+                    "ReadCapacityUnits": 2,
+                    "WriteCapacityUnits": 1
+                  }
+                }
+              ]
+            }
+          },
+          "TableReadCapacityScalableMessage": {
+            "Type": "AWS::ApplicationAutoScaling::ScalableTarget",
+            "Properties": {
+              "MaxCapacity": 1000,
+              "MinCapacity": 2,
+              "ResourceId": {
+                "Fn::Join": [
+                  "/",
+                  [
+                    "table",
+                    {
+                      "Ref": "DynamoDBTableMessage"
+                    }
+                  ]
+                ]
+              },
+              "RoleARN": "arn:aws:iam::335326279392:role/meeter_dynamo_auto_scaling",
+              "ScalableDimension": "dynamodb:table:ReadCapacityUnits",
+              "ServiceNamespace": "dynamodb"
+            }
+          },
+          "TableReadCapacityScalingPolicyMessage": {
+            "Type": "AWS::ApplicationAutoScaling::ScalingPolicy",
+            "Properties": {
+              "PolicyName": "TableReadScalingPolicyMessage",
+              "PolicyType": "TargetTrackingScaling",
+              "ScalingTargetId": {
+                "Ref": "TableReadCapacityScalableMessage"
+              },
+              "TargetTrackingScalingPolicyConfiguration": {
+                "PredefinedMetricSpecification": {
+                  "PredefinedMetricType": "DynamoDBReadCapacityUtilization"
+                },
+                "ScaleInCooldown": 60,
+                "ScaleOutCooldown": 60,
+                "TargetValue": 75
+              }
+            }
+          },
+          "TableWriteCapacityScalableMessage": {
+            "Type": "AWS::ApplicationAutoScaling::ScalableTarget",
+            "Properties": {
+              "MaxCapacity": 500,
+              "MinCapacity": 1,
+              "ResourceId": {
+                "Fn::Join": [
+                  "/",
+                  [
+                    "table",
+                    {
+                      "Ref": "DynamoDBTableMessage"
+                    }
+                  ]
+                ]
+              },
+              "RoleARN": "arn:aws:iam::335326279392:role/meeter_dynamo_auto_scaling",
+              "ScalableDimension": "dynamodb:table:WriteCapacityUnits",
+              "ServiceNamespace": "dynamodb"
+            }
+          },
+          "TableWriteCapacityScalingPolicyMessage": {
+            "Type": "AWS::ApplicationAutoScaling::ScalingPolicy",
+            "Properties": {
+              "PolicyName": "TableWriteScalingPolicyMessage",
+              "PolicyType": "TargetTrackingScaling",
+              "ScalingTargetId": {
+                "Ref": "TableWriteCapacityScalableMessage"
+              },
+              "TargetTrackingScalingPolicyConfiguration": {
+                "PredefinedMetricSpecification": {
+                  "PredefinedMetricType": "DynamoDBWriteCapacityUtilization"
+                },
+                "ScaleInCooldown": 60,
+                "ScaleOutCooldown": 60,
+                "TargetValue": 75
+              }
+            }
+          },
+          "GSIMessageByFromReadCapacityScalableMessage": {
+            "Type": "AWS::ApplicationAutoScaling::ScalableTarget",
+            "Properties": {
+              "MaxCapacity": 1000,
+              "MinCapacity": 2,
+              "ResourceId": {
+                "Fn::Join": [
+                  "/",
+                  [
+                    "table",
+                    {
+                      "Ref": "DynamoDBTableMessage"
+                    },
+                    "index",
+                    "message-byfrom-dev"
+                  ]
+                ]
+              },
+              "RoleARN": "arn:aws:iam::335326279392:role/meeter_dynamo_auto_scaling",
+              "ScalableDimension": "dynamodb:index:ReadCapacityUnits",
+              "ServiceNamespace": "dynamodb"
+            }
+          },
+          "GSIMessageByFromReadCapacityScalingPolicyMessage": {
+            "Type": "AWS::ApplicationAutoScaling::ScalingPolicy",
+            "Properties": {
+              "PolicyName": "GSIMessageByFromReadScalingPolicyMessage",
+              "PolicyType": "TargetTrackingScaling",
+              "ScalingTargetId": {
+                "Ref": "GSIMessageByFromReadCapacityScalableMessage"
+              },
+              "TargetTrackingScalingPolicyConfiguration": {
+                "PredefinedMetricSpecification": {
+                  "PredefinedMetricType": "DynamoDBReadCapacityUtilization"
+                },
+                "ScaleInCooldown": 60,
+                "ScaleOutCooldown": 60,
+                "TargetValue": 75
+              }
+            }
+          },
+          "GSIMessageByFromWriteCapacityScalableMessage": {
+            "Type": "AWS::ApplicationAutoScaling::ScalableTarget",
+            "Properties": {
+              "MaxCapacity": 500,
+              "MinCapacity": 1,
+              "ResourceId": {
+                "Fn::Join": [
+                  "/",
+                  [
+                    "table",
+                    {
+                      "Ref": "DynamoDBTableMessage"
+                    },
+                    "index",
+                    "message-byfrom-dev"
+                  ]
+                ]
+              },
+              "RoleARN": "arn:aws:iam::335326279392:role/meeter_dynamo_auto_scaling",
+              "ScalableDimension": "dynamodb:index:WriteCapacityUnits",
+              "ServiceNamespace": "dynamodb"
+            }
+          },
+          "GSIMessageByFromWriteCapacityScalingPolicyMessage": {
+            "Type": "AWS::ApplicationAutoScaling::ScalingPolicy",
+            "Properties": {
+              "PolicyName": "GSIMessageByFromWriteScalingPolicyMessage",
+              "PolicyType": "TargetTrackingScaling",
+              "ScalingTargetId": {
+                "Ref": "GSIMessageByFromWriteCapacityScalableMessage"
+              },
+              "TargetTrackingScalingPolicyConfiguration": {
+                "PredefinedMetricSpecification": {
+                  "PredefinedMetricType": "DynamoDBWriteCapacityUtilization"
+                },
+                "ScaleInCooldown": 60,
+                "ScaleOutCooldown": 60,
+                "TargetValue": 75
+              }
+            }
+          },
+          "GSIMessageByToReadCapacityScalableMessage": {
+            "Type": "AWS::ApplicationAutoScaling::ScalableTarget",
+            "Properties": {
+              "MaxCapacity": 1000,
+              "MinCapacity": 2,
+              "ResourceId": {
+                "Fn::Join": [
+                  "/",
+                  [
+                    "table",
+                    {
+                      "Ref": "DynamoDBTableMessage"
+                    },
+                    "index",
+                    "message-byto-dev"
+                  ]
+                ]
+              },
+              "RoleARN": "arn:aws:iam::335326279392:role/meeter_dynamo_auto_scaling",
+              "ScalableDimension": "dynamodb:index:ReadCapacityUnits",
+              "ServiceNamespace": "dynamodb"
+            }
+          },
+          "GSIMessageByToReadCapacityScalingPolicyMessage": {
+            "Type": "AWS::ApplicationAutoScaling::ScalingPolicy",
+            "Properties": {
+              "PolicyName": "GSIMessageByToReadScalingPolicyMessage",
+              "PolicyType": "TargetTrackingScaling",
+              "ScalingTargetId": {
+                "Ref": "GSIMessageByToReadCapacityScalableMessage"
+              },
+              "TargetTrackingScalingPolicyConfiguration": {
+                "PredefinedMetricSpecification": {
+                  "PredefinedMetricType": "DynamoDBReadCapacityUtilization"
+                },
+                "ScaleInCooldown": 60,
+                "ScaleOutCooldown": 60,
+                "TargetValue": 75
+              }
+            }
+          },
+          "GSIMessageByToWriteCapacityScalableMessage": {
+            "Type": "AWS::ApplicationAutoScaling::ScalableTarget",
+            "Properties": {
+              "MaxCapacity": 500,
+              "MinCapacity": 1,
+              "ResourceId": {
+                "Fn::Join": [
+                  "/",
+                  [
+                    "table",
+                    {
+                      "Ref": "DynamoDBTableMessage"
+                    },
+                    "index",
+                    "message-byto-dev"
+                  ]
+                ]
+              },
+              "RoleARN": "arn:aws:iam::335326279392:role/meeter_dynamo_auto_scaling",
+              "ScalableDimension": "dynamodb:index:WriteCapacityUnits",
+              "ServiceNamespace": "dynamodb"
+            }
+          },
+          "GSIMessageByToWriteCapacityScalingPolicyMessage": {
+            "Type": "AWS::ApplicationAutoScaling::ScalingPolicy",
+            "Properties": {
+              "PolicyName": "GSIMessageByToWriteScalingPolicyMessage",
+              "PolicyType": "TargetTrackingScaling",
+              "ScalingTargetId": {
+                "Ref": "GSIMessageByToWriteCapacityScalableMessage"
+              },
+              "TargetTrackingScalingPolicyConfiguration": {
+                "PredefinedMetricSpecification": {
+                  "PredefinedMetricType": "DynamoDBWriteCapacityUtilization"
+                },
+                "ScaleInCooldown": 60,
+                "ScaleOutCooldown": 60,
+                "TargetValue": 75
+              }
+            }
+          }
+        },
+        "Outputs": {
+          "ServerlessDeploymentBucketName": {
+            "Value": {
+              "Ref": "ServerlessDeploymentBucket"
+            }
+          }
+        }
+      },
+      "coreCloudFormationTemplate": {
+        "AWSTemplateFormatVersion": "2010-09-09",
+        "Description": "The AWS CloudFormation template for this Serverless application",
+        "Resources": {
+          "ServerlessDeploymentBucket": {
+            "Type": "AWS::S3::Bucket"
+          }
+        },
+        "Outputs": {
+          "ServerlessDeploymentBucketName": {
+            "Value": {
+              "Ref": "ServerlessDeploymentBucket"
+            }
+          }
+        }
+      }
+    },
+    "custom": {
+      "defaultStage": "dev",
+      "role": "arn:aws:iam::335326279392:role/lambda_basic_execution",
+      "dynamodb": {
+        "provisioned-capacity-unit": {
+          "read": {
+            "default": 2
+          },
+          "write": {
+            "default": 1
+          }
+        },
+        "auto-scaling": {
+          "read": {
+            "target-utilization": 75,
+            "min": 2,
+            "max": 1000
+          },
+          "write": {
+            "target-utilization": 75,
+            "min": 1,
+            "max": 500
+          }
+        }
+      }
+    },
+    "functions": {},
+    "resources": {
+      "Resources": {
+        "DynamoDBTableMessage": {
+          "Type": "AWS::DynamoDB::Table",
+          "Properties": {
+            "TableName": "message-dev",
+            "AttributeDefinitions": [
+              {
+                "AttributeName": "id",
+                "AttributeType": "S"
+              },
+              {
+                "AttributeName": "from_id",
+                "AttributeType": "S"
+              },
+              {
+                "AttributeName": "to_id",
+                "AttributeType": "S"
+              }
+            ],
+            "KeySchema": [
+              {
+                "AttributeName": "id",
+                "KeyType": "HASH"
+              }
+            ],
+            "ProvisionedThroughput": {
+              "ReadCapacityUnits": 2,
+              "WriteCapacityUnits": 1
+            },
+            "StreamSpecification": {
+              "StreamViewType": "NEW_AND_OLD_IMAGES"
+            },
+            "GlobalSecondaryIndexes": [
+              {
+                "IndexName": "message-byfrom-dev",
+                "KeySchema": [
+                  {
+                    "AttributeName": "from_id",
+                    "KeyType": "HASH"
+                  },
+                  {
+                    "AttributeName": "to_id",
+                    "KeyType": "RANGE"
+                  }
+                ],
+                "Projection": {
+                  "ProjectionType": "ALL"
+                },
+                "ProvisionedThroughput": {
+                  "ReadCapacityUnits": 2,
+                  "WriteCapacityUnits": 1
+                }
+              },
+              {
+                "IndexName": "message-byto-dev",
+                "KeySchema": [
+                  {
+                    "AttributeName": "to_id",
+                    "KeyType": "HASH"
+                  },
+                  {
+                    "AttributeName": "from_id",
+                    "KeyType": "RANGE"
+                  }
+                ],
+                "Projection": {
+                  "ProjectionType": "ALL"
+                },
+                "ProvisionedThroughput": {
+                  "ReadCapacityUnits": 2,
+                  "WriteCapacityUnits": 1
+                }
+              }
+            ]
+          }
+        },
+        "TableReadCapacityScalableMessage": {
+          "Type": "AWS::ApplicationAutoScaling::ScalableTarget",
+          "Properties": {
+            "MaxCapacity": 1000,
+            "MinCapacity": 2,
+            "ResourceId": {
+              "Fn::Join": [
+                "/",
+                [
+                  "table",
+                  {
+                    "Ref": "DynamoDBTableMessage"
+                  }
+                ]
+              ]
+            },
+            "RoleARN": "arn:aws:iam::335326279392:role/meeter_dynamo_auto_scaling",
+            "ScalableDimension": "dynamodb:table:ReadCapacityUnits",
+            "ServiceNamespace": "dynamodb"
+          }
+        },
+        "TableReadCapacityScalingPolicyMessage": {
+          "Type": "AWS::ApplicationAutoScaling::ScalingPolicy",
+          "Properties": {
+            "PolicyName": "TableReadScalingPolicyMessage",
+            "PolicyType": "TargetTrackingScaling",
+            "ScalingTargetId": {
+              "Ref": "TableReadCapacityScalableMessage"
+            },
+            "TargetTrackingScalingPolicyConfiguration": {
+              "PredefinedMetricSpecification": {
+                "PredefinedMetricType": "DynamoDBReadCapacityUtilization"
+              },
+              "ScaleInCooldown": 60,
+              "ScaleOutCooldown": 60,
+              "TargetValue": 75
+            }
+          }
+        },
+        "TableWriteCapacityScalableMessage": {
+          "Type": "AWS::ApplicationAutoScaling::ScalableTarget",
+          "Properties": {
+            "MaxCapacity": 500,
+            "MinCapacity": 1,
+            "ResourceId": {
+              "Fn::Join": [
+                "/",
+                [
+                  "table",
+                  {
+                    "Ref": "DynamoDBTableMessage"
+                  }
+                ]
+              ]
+            },
+            "RoleARN": "arn:aws:iam::335326279392:role/meeter_dynamo_auto_scaling",
+            "ScalableDimension": "dynamodb:table:WriteCapacityUnits",
+            "ServiceNamespace": "dynamodb"
+          }
+        },
+        "TableWriteCapacityScalingPolicyMessage": {
+          "Type": "AWS::ApplicationAutoScaling::ScalingPolicy",
+          "Properties": {
+            "PolicyName": "TableWriteScalingPolicyMessage",
+            "PolicyType": "TargetTrackingScaling",
+            "ScalingTargetId": {
+              "Ref": "TableWriteCapacityScalableMessage"
+            },
+            "TargetTrackingScalingPolicyConfiguration": {
+              "PredefinedMetricSpecification": {
+                "PredefinedMetricType": "DynamoDBWriteCapacityUtilization"
+              },
+              "ScaleInCooldown": 60,
+              "ScaleOutCooldown": 60,
+              "TargetValue": 75
+            }
+          }
+        },
+        "GSIMessageByFromReadCapacityScalableMessage": {
+          "Type": "AWS::ApplicationAutoScaling::ScalableTarget",
+          "Properties": {
+            "MaxCapacity": 1000,
+            "MinCapacity": 2,
+            "ResourceId": {
+              "Fn::Join": [
+                "/",
+                [
+                  "table",
+                  {
+                    "Ref": "DynamoDBTableMessage"
+                  },
+                  "index",
+                  "message-byfrom-dev"
+                ]
+              ]
+            },
+            "RoleARN": "arn:aws:iam::335326279392:role/meeter_dynamo_auto_scaling",
+            "ScalableDimension": "dynamodb:index:ReadCapacityUnits",
+            "ServiceNamespace": "dynamodb"
+          }
+        },
+        "GSIMessageByFromReadCapacityScalingPolicyMessage": {
+          "Type": "AWS::ApplicationAutoScaling::ScalingPolicy",
+          "Properties": {
+            "PolicyName": "GSIMessageByFromReadScalingPolicyMessage",
+            "PolicyType": "TargetTrackingScaling",
+            "ScalingTargetId": {
+              "Ref": "GSIMessageByFromReadCapacityScalableMessage"
+            },
+            "TargetTrackingScalingPolicyConfiguration": {
+              "PredefinedMetricSpecification": {
+                "PredefinedMetricType": "DynamoDBReadCapacityUtilization"
+              },
+              "ScaleInCooldown": 60,
+              "ScaleOutCooldown": 60,
+              "TargetValue": 75
+            }
+          }
+        },
+        "GSIMessageByFromWriteCapacityScalableMessage": {
+          "Type": "AWS::ApplicationAutoScaling::ScalableTarget",
+          "Properties": {
+            "MaxCapacity": 500,
+            "MinCapacity": 1,
+            "ResourceId": {
+              "Fn::Join": [
+                "/",
+                [
+                  "table",
+                  {
+                    "Ref": "DynamoDBTableMessage"
+                  },
+                  "index",
+                  "message-byfrom-dev"
+                ]
+              ]
+            },
+            "RoleARN": "arn:aws:iam::335326279392:role/meeter_dynamo_auto_scaling",
+            "ScalableDimension": "dynamodb:index:WriteCapacityUnits",
+            "ServiceNamespace": "dynamodb"
+          }
+        },
+        "GSIMessageByFromWriteCapacityScalingPolicyMessage": {
+          "Type": "AWS::ApplicationAutoScaling::ScalingPolicy",
+          "Properties": {
+            "PolicyName": "GSIMessageByFromWriteScalingPolicyMessage",
+            "PolicyType": "TargetTrackingScaling",
+            "ScalingTargetId": {
+              "Ref": "GSIMessageByFromWriteCapacityScalableMessage"
+            },
+            "TargetTrackingScalingPolicyConfiguration": {
+              "PredefinedMetricSpecification": {
+                "PredefinedMetricType": "DynamoDBWriteCapacityUtilization"
+              },
+              "ScaleInCooldown": 60,
+              "ScaleOutCooldown": 60,
+              "TargetValue": 75
+            }
+          }
+        },
+        "GSIMessageByToReadCapacityScalableMessage": {
+          "Type": "AWS::ApplicationAutoScaling::ScalableTarget",
+          "Properties": {
+            "MaxCapacity": 1000,
+            "MinCapacity": 2,
+            "ResourceId": {
+              "Fn::Join": [
+                "/",
+                [
+                  "table",
+                  {
+                    "Ref": "DynamoDBTableMessage"
+                  },
+                  "index",
+                  "message-byto-dev"
+                ]
+              ]
+            },
+            "RoleARN": "arn:aws:iam::335326279392:role/meeter_dynamo_auto_scaling",
+            "ScalableDimension": "dynamodb:index:ReadCapacityUnits",
+            "ServiceNamespace": "dynamodb"
+          }
+        },
+        "GSIMessageByToReadCapacityScalingPolicyMessage": {
+          "Type": "AWS::ApplicationAutoScaling::ScalingPolicy",
+          "Properties": {
+            "PolicyName": "GSIMessageByToReadScalingPolicyMessage",
+            "PolicyType": "TargetTrackingScaling",
+            "ScalingTargetId": {
+              "Ref": "GSIMessageByToReadCapacityScalableMessage"
+            },
+            "TargetTrackingScalingPolicyConfiguration": {
+              "PredefinedMetricSpecification": {
+                "PredefinedMetricType": "DynamoDBReadCapacityUtilization"
+              },
+              "ScaleInCooldown": 60,
+              "ScaleOutCooldown": 60,
+              "TargetValue": 75
+            }
+          }
+        },
+        "GSIMessageByToWriteCapacityScalableMessage": {
+          "Type": "AWS::ApplicationAutoScaling::ScalableTarget",
+          "Properties": {
+            "MaxCapacity": 500,
+            "MinCapacity": 1,
+            "ResourceId": {
+              "Fn::Join": [
+                "/",
+                [
+                  "table",
+                  {
+                    "Ref": "DynamoDBTableMessage"
+                  },
+                  "index",
+                  "message-byto-dev"
+                ]
+              ]
+            },
+            "RoleARN": "arn:aws:iam::335326279392:role/meeter_dynamo_auto_scaling",
+            "ScalableDimension": "dynamodb:index:WriteCapacityUnits",
+            "ServiceNamespace": "dynamodb"
+          }
+        },
+        "GSIMessageByToWriteCapacityScalingPolicyMessage": {
+          "Type": "AWS::ApplicationAutoScaling::ScalingPolicy",
+          "Properties": {
+            "PolicyName": "GSIMessageByToWriteScalingPolicyMessage",
+            "PolicyType": "TargetTrackingScaling",
+            "ScalingTargetId": {
+              "Ref": "GSIMessageByToWriteCapacityScalableMessage"
+            },
+            "TargetTrackingScalingPolicyConfiguration": {
+              "PredefinedMetricSpecification": {
+                "PredefinedMetricType": "DynamoDBWriteCapacityUtilization"
+              },
+              "ScaleInCooldown": 60,
+              "ScaleOutCooldown": 60,
+              "TargetValue": 75
+            }
+          }
+        }
+      },
+      "Outputs": {}
+    }
+  },
+  "package": {
+    "artifactDirectoryName": "serverless/dynamodb-message/dev/1511608094365-2017-11-25T11:08:14.365Z",
+    "artifact": ""
+  }
+}
