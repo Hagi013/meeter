@@ -1,0 +1,208 @@
+service: meeter # NOTE: update this with your service name
+
+provider:
+  name: aws
+  runtime: nodejs6.10
+  stage: ${opt:stage, self:custome.defaultStage}
+  region: ap-northeast-1
+  role: ${self:custom.role}
+  profile: hugy
+
+custom:
+  defaultStage: dev
+  role: arn:aws:iam::335326279392:role/meeter-api-function-lambdaRole
+  environment:
+    dev:
+      STAGE: dev
+      error_webhook: https://example.com
+    stg:
+      STAGE: stg
+      error_webhook: https://example.com
+    prd:
+      STAGE: prd
+      error_webhook: https://example.com
+  provisionedMemory:
+    dev: 512
+    stg: 512
+    prod: 1024
+
+
+package:
+  individually: true
+  exclude:
+    - .**
+    - .idea/**
+    - README.md
+    - node_modules/**
+    - src/**
+  include:
+    - src/package.json
+    # deploy時の生成方法に注意が必要
+    - src/node_modules/**
+    # API標準モジュール
+    - src/api/handler-util.js
+    - src/lib/**
+    - src/model/base-model.js
+    - src/repository/base-repository.js
+
+functions:
+  postOrganization:
+    handler: src/api/organization-handler.postOrganization
+    name: backend-post-organization-${self:provider.stage}
+    memorySize: ${self:custom.provisionedMemory.${self:provider.stage}}
+    environment: ${self:custom.environment.${self:provider.stage}}
+    package:
+      exclude:
+      include:
+        - src/api/organization-handler.js
+        - src/model/organization.js
+        - src/repository/organization-repo.js
+    events:
+      - http:
+          path: organization
+          method: post
+          cors: true
+#          authorizer:
+#            arn: ${self:custom.cognito.userpool.arn}
+
+  getOrganizations:
+    handler: src/api/organization-handler.getOrganizations
+    name: backend-get-organizations-${self:provider.stage}
+    memorySize: ${self:custom.provisionedMemory.${self:provider.stage}}
+    environment: ${self:custom.environment.${self:provider.stage}}
+    package:
+      exclude:
+      include:
+        - src/api/organization-handler.js
+        - src/model/organization.js
+        - src/repository/organization-repo.js
+    events:
+      - http:
+          path: organizations
+          method: get
+          cors: true
+#          authorizer:
+#            arn: ${self:custom.cognito.userpool.arn}
+
+
+  postAccount:
+    handler: src/api/account-handler.postAccount
+    name: backend-post-account-${self:provider.stage}
+    memorySize: ${self:custom.provisionedMemory.${self:provider.stage}}
+    environment: ${self:custom.environment.${self:provider.stage}}
+    package:
+      exclude:
+      include:
+        - src/api/account-handler.js
+        - src/model/accounts.js
+        - src/repository/account-repo.js
+    events:
+      - http:
+          path: account
+          method: post
+          cors: true
+#          authorizer:
+#            arn: ${self:custom.cognito.userpool.arn}
+
+  getAccounts:
+    handler: src/api/account-handler.getAccounts
+    name: backend-get-accounts-${self:provider.stage}
+    memorySize: ${self:custom.provisionedMemory.${self:provider.stage}}
+    environment: ${self:custom.environment.${self:provider.stage}}
+    package:
+      exclude:
+      include:
+        - src/api/account-handler.js
+        - src/model/accounts.js
+        - src/repository/account-repo.js
+    events:
+      - http:
+          path: accounts
+          method: get
+          cors: true
+#          authorizer:
+#            arn: ${self:custom.cognito.userpool.arn}
+
+
+  postMessage:
+    handler: src/api/message-handler.postMessage
+    name: backend-post-message-${self:provider.stage}
+    memorySize: ${self:custom.provisionedMemory.${self:provider.stage}}
+    environment: ${self:custom.environment.${self:provider.stage}}
+    package:
+      exclude:
+      include:
+        - src/api/message-handler.js
+        - src/model/message.js
+        - src/repository/message-repo.js
+        - src/repository/account-repo.js
+    events:
+      - http:
+          path: message
+          method: post
+          cors: true
+#          authorizer:
+#            arn: ${self:custom.cognito.userpool.arn}
+
+  getMessages:
+    handler: src/api/message-handler.getMessages
+    name: backend-get-messages-${self:provider.stage}
+    memorySize: ${self:custom.provisionedMemory.${self:provider.stage}}
+    environment: ${self:custom.environment.${self:provider.stage}}
+    package:
+      exclude:
+      include:
+        - src/api/message-handler.js
+        - src/model/message.js
+        - src/repository/message-repo.js
+        - src/repository/account-repo.js
+    events:
+      - http:
+          path: messages
+          method: get
+          cors: true
+#          authorizer:
+#            arn: ${self:custom.cognito.userpool.arn}
+
+
+  postSchedule:
+    handler: src/api/schedule-handler.postSchedule
+    name: backend-post-schedule-${self:provider.stage}
+    memorySize: ${self:custom.provisionedMemory.${self:provider.stage}}
+    environment: ${self:custom.environment.${self:provider.stage}}
+    package:
+      exclude:
+      include:
+        - src/api/schedule-handler.js
+        - src/model/schedule.js
+        - src/repository/schedule-repo.js
+        - src/repository/organization-repo.js
+    events:
+      - http:
+          path: schedule
+          method: post
+          cors: true
+#          authorizer:
+#            arn: ${self:custom.cognito.userpool.arn}
+
+  getSchedules:
+    handler: src/api/schedule-handler.getSchedules
+    name: backend-get-schedules-${self:provider.stage}
+    memorySize: ${self:custom.provisionedMemory.${self:provider.stage}}
+    environment: ${self:custom.environment.${self:provider.stage}}
+    package:
+      exclude:
+      include:
+        - src/api/schedule-handler.js
+        - src/model/schedule.js
+        - src/repository/schedule-repo.js
+        - src/repository/organization-repo.js
+    events:
+      - http:
+          path: schedules
+          method: get
+          cors: true
+#          authorizer:
+#            arn: ${self:custom.cognito.userpool.arn}
+
+
