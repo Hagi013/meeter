@@ -42,7 +42,7 @@
     computed: {},
 
     filters: {
-      calcDatetime: id => moment(Number(id)).format('YYYY-MM-DD HH:mm:ss')
+      calcDatetime: id => moment(Number(id)).format('YYYY-MM-DD HH:mm:ss'),
     },
 
     watch: {},

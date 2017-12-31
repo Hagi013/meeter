@@ -29,6 +29,7 @@ export default class AccountObject extends BaseModel {
   }
 
   static validate(obj) {
-    console.log(`今は特に何もしない。${obj}`);
+    console.log(`今は特に何もしない。${JSON.stringify(obj)}`);
+    return true;
   }
 }

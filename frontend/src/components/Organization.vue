@@ -45,7 +45,7 @@
 
 <script>
   import { mapActions, mapGetters } from 'vuex';
-  import List from './organization/List';
+  import List from './organization/list';
   import { emptyCheck } from '../lib/utils/check-util';
 
   export default {

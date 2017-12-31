@@ -23,7 +23,6 @@ export default class BaseModel {
     if (!validated) {
       throw Error('Instatiated Object is failed!');
     }
-    console.log(instantiated);
     return this.repo().save(instantiated);
   }
 

@@ -15,7 +15,7 @@ export const registerOrganization = async ({ commit, state }, organization) => {
 
 export const getAllOrganizations = async ({ commit, state }) => {
   const dateFromAPI = state.organizations.dateFromAPI;
-  if (dateFromAPI !== '' || moment().diff(moment(dateFromAPI), 'minutes') < 1) return state.organizations.organizations;
+  if (dateFromAPI !== '' && moment().diff(moment(dateFromAPI), 'minutes') < 1) return state.organizations.organizations;
 
   const resultWrapped = await Try.promiseApply(() => Organization.findAll());
   if (resultWrapped.isFailure()) Error('Finding via API is failed');
@@ -27,21 +27,23 @@ export const getAllOrganizations = async ({ commit, state }) => {
 };
 
 export const registerAccount = async ({ commit, state }, account) => {
-  if (account.constructor.name !== 'Account') return;
+  const resultWrapped = await Try.execPromise(() => Account.save(account));
+  console.log(resultWrapped);
+  if (resultWrapped.isFailure()) return;
 
-  await Account.save(account);
-  const accounts = state.accounts.accounts;
-  commit(types.ACCOUNT.REGISTER, accounts);
+  const registered = Account.apply(resultWrapped.get());
+
+  commit(types.ACCOUNT.REGISTER, registered);
 };
 
 export const getAllAccounts = async ({ commit, state }) => {
   const dateFromAPI = state.accounts.dateFromAPI;
-  if (dateFromAPI === '' || moment().diff(moment(dateFromAPI), 'minutes') < 1) return state.accounts.accounts;
+  if (dateFromAPI !== '' && moment().diff(moment(dateFromAPI), 'minutes') < 1) return state.accounts.accounts;
 
   const accountsWrap = await Try.promiseApply(() => Account.findAll());
   if (accountsWrap.isFailure()) return Error('Finding via API is failed');
-  const registered = accountsWrap.get();
 
+  const registered = accountsWrap.get();
   commit(types.ACCOUNT.GET_TIME);
   commit(types.ACCOUNT.REGISTER, registered);
   return state.accounts.accounts;
