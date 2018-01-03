@@ -5,46 +5,56 @@ import Try from '../lib/try';
 import Organization from '../model/organization';
 import Account from '../model/account';
 
-export const registerOrganization = async ({ commit, state }, organization) => {
-  const resultWrapped = await Try.promiseApply(() => Organization.save(organization));
+const organizationSet = {
+  stateFile: 'organizations',
+  state: 'organizations',
+  types: 'ORGANIZATION',
+  serv: Organization,
+};
+
+const accountSet = {
+  stateFile: 'accounts',
+  state: 'accounts',
+  types: 'ACCOUNT',
+  serv: Account,
+};
+
+const getAll = async (commit, state, set) => {
+  const dateFromAPI = state[set.stateFile].dateFromAPI;
+  if (dateFromAPI !== '' && moment().diff(moment(dateFromAPI), 'minutes') < 1) return state[set.stateFile][set.state];
+
+  const resultWrapped = await Try.promiseApply(() => set.serv.findAll());
+  if (resultWrapped.isFailure()) Error('Finding via API is failed');
+
+  const results = resultWrapped.get();
+  commit(types[set.types].GET_TIME);
+  commit(types[set.types].REGISTER, results);
+  return state[set.stateFile][set.state];
+};
+
+const register = async (commit, set, target) => {
+  const resultWrapped = await Try.promiseApply(() => set.serv.save(target));
   if (resultWrapped.isFailure()) return;
 
-  const registered = Organization.apply(resultWrapped.get());
-  commit(types.ORGANIZATION.REGISTER, registered);
+  const registered = set.serv.apply(resultWrapped.get());
+  commit(types[set.types].REGISTER, registered);
+};
+
+export const registerOrganization = async ({ commit, state }, organization) => {
+  await register(commit, organizationSet, organization);
 };
 
 export const getAllOrganizations = async ({ commit, state }) => {
-  const dateFromAPI = state.organizations.dateFromAPI;
-  if (dateFromAPI !== '' && moment().diff(moment(dateFromAPI), 'minutes') < 1) return state.organizations.organizations;
-
-  const resultWrapped = await Try.promiseApply(() => Organization.findAll());
-  if (resultWrapped.isFailure()) Error('Finding via API is failed');
-
-  const organizations = resultWrapped.get();
-  commit(types.ORGANIZATION.GET_TIME);
-  commit(types.ORGANIZATION.REGISTER, organizations);
-  return state.organizations.organizations;
+  const results = await getAll(commit, state, organizationSet);
+  return results;
 };
 
 export const registerAccount = async ({ commit, state }, account) => {
-  const resultWrapped = await Try.execPromise(() => Account.save(account));
-  console.log(resultWrapped);
-  if (resultWrapped.isFailure()) return;
-
-  const registered = Account.apply(resultWrapped.get());
-
-  commit(types.ACCOUNT.REGISTER, registered);
+  await register(commit, accountSet, account);
 };
 
 export const getAllAccounts = async ({ commit, state }) => {
-  const dateFromAPI = state.accounts.dateFromAPI;
-  if (dateFromAPI !== '' && moment().diff(moment(dateFromAPI), 'minutes') < 1) return state.accounts.accounts;
-
-  const accountsWrap = await Try.promiseApply(() => Account.findAll());
-  if (accountsWrap.isFailure()) return Error('Finding via API is failed');
-
-  const registered = accountsWrap.get();
-  commit(types.ACCOUNT.GET_TIME);
-  commit(types.ACCOUNT.REGISTER, registered);
-  return state.accounts.accounts;
+  const results = await getAll(commit, state, accountSet);
+  return results;
 };
+
