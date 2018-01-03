@@ -3,6 +3,7 @@ import Router from 'vue-router';
 import Landing from '@/components/Landing';
 import Organization from '@/components/Organization';
 import Account from '@/components/Account';
+import Message from '@/components/Message';
 
 Vue.use(Router);
 
@@ -28,6 +29,14 @@ export default new Router({
       path: '/account',
       name: 'Account',
       component: Account,
+      beforeEnter: (to, from, next) => {
+        // next({ path: '/list'});
+        next();
+      },
+    }, {
+      path: '/message',
+      name: 'Message',
+      component: Message,
       beforeEnter: (to, from, next) => {
         // next({ path: '/list'});
         next();

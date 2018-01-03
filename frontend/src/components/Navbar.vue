@@ -12,6 +12,8 @@
             a.nav-link.clickable(v-on:click='goto("organization")') Organization
           li.nav-item.active
             a.nav-link.clickable(v-on:click='goto("account")') Account
+          li.nav-item.active
+            a.nav-link.clickable(v-on:click='goto("message")') Message
 
 </template>
 
@@ -27,6 +29,7 @@
           landing: '/',
           organization: '/organization',
           account: '/account',
+          message: '/message',
         },
       };
     },
