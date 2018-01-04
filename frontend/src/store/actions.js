@@ -4,6 +4,7 @@ import * as types from './mutation-types';
 import Try from '../lib/try';
 import Organization from '../model/organization';
 import Account from '../model/account';
+import Message from '../model/message';
 
 const organizationSet = {
   stateFile: 'organizations',
@@ -17,6 +18,13 @@ const accountSet = {
   state: 'accounts',
   types: 'ACCOUNT',
   serv: Account,
+};
+
+const messageSet = {
+  stateFile: 'messages',
+  state: 'messages',
+  types: 'MESSAGE',
+  serv: Message,
 };
 
 const getAll = async (commit, state, set) => {
@@ -58,3 +66,7 @@ export const getAllAccounts = async ({ commit, state }) => {
   return results;
 };
 
+export const getAllMessages = async ({ commit, state }) => {
+  const results = await getAll(commit, state, messageSet);
+  return results;
+};
