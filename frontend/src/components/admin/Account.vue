@@ -41,7 +41,7 @@
 <script>
   import { mapActions, mapGetters } from 'vuex';
   import List from './account/list';
-  import { notEmptyCheck } from '../lib/utils/check-util';
+  import { notEmptyCheck } from '../../lib/utils/check-util';
 
   export default {
     name: 'Account',

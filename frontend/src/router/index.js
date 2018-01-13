@@ -1,9 +1,9 @@
 import Vue from 'vue';
 import Router from 'vue-router';
 import Landing from '@/components/Landing';
-import Organization from '@/components/Organization';
-import Account from '@/components/Account';
-import Message from '@/components/Message';
+import Organization from '@/components/admin/Organization';
+import Account from '@/components/admin/Account';
+import Message from '@/components/admin/Message';
 
 Vue.use(Router);
 
@@ -18,7 +18,7 @@ export default new Router({
         next();
       },
     }, {
-      path: '/organization',
+      path: '/admin/organization',
       name: 'Organization',
       component: Organization,
       beforeEnter: (to, from, next) => {
@@ -26,7 +26,7 @@ export default new Router({
         next();
       },
     }, {
-      path: '/account',
+      path: '/admin/account',
       name: 'Account',
       component: Account,
       beforeEnter: (to, from, next) => {
@@ -34,7 +34,7 @@ export default new Router({
         next();
       },
     }, {
-      path: '/message',
+      path: '/admin/message',
       name: 'Message',
       component: Message,
       beforeEnter: (to, from, next) => {

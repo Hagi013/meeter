@@ -50,7 +50,7 @@
 <script>
   import moment from 'moment';
   import { mapActions, mapGetters } from 'vuex';
-  import { emptyCheck } from '../lib/utils/check-util';
+  import { emptyCheck } from '../../lib/utils/check-util';
 
   export default {
     name: 'Message',

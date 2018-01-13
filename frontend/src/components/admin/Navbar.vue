@@ -18,7 +18,7 @@
 </template>
 
 <script>
-  import router from '../router';
+  import router from '../../router/index';
 
   export default {
     name: 'Navbar',
@@ -27,9 +27,9 @@
         path: {
           login: '/login',
           landing: '/',
-          organization: '/organization',
-          account: '/account',
-          message: '/message',
+          organization: '/admin/organization',
+          account: '/admin/account',
+          message: '/admin/message',
         },
       };
     },
