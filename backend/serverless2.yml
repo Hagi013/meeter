@@ -1,0 +1,788 @@
+service: api-functions
+
+provider:
+  name: aws
+  apiKeys:
+    - nonop-sysrom${self:custom.resource-suffix.${self:provider.stage}}
+  runtime: nodejs6.10
+  stage: ${opt:stage, self:custom.defaultStage}
+  # shared credentialsの[default]を利用する
+  profile: default
+  role: ${self:custom.role.${self:provider.stage}}
+  region: us-west-2
+
+# Custom Setting
+custom:
+  defaultStage: dev
+  resource-suffix:
+    local: -${self:provider.stage}
+    dev: -${self:provider.stage}
+    stg: -${self:provider.stage}
+    prod: ""  # no suffix
+  s3:
+    bucket:
+      static-website: nonop${self:custom.resource-suffix.${self:provider.stage}}
+  cognito:
+    userpool:
+      arn: ${cf:cognito-trigger-functions-${self:provider.stage}.UserPoolArn}
+  role:
+    local: arn:aws:iam::225808214025:role/nonnop-api-function-dev-us-west-2-lambdaRole
+    dev: arn:aws:iam::225808214025:role/nonnop-api-function-dev-us-west-2-lambdaRole
+    stg: arn:aws:iam::225808214025:role/nonnop-api-function-dev-us-west-2-lambdaRole
+    prod: arn:aws:iam::225808214025:role/nonnop-api-function-dev-us-west-2-lambdaRole
+  api-functions:
+    environment:
+      local:
+        log_level: debug
+        STAGE: ${self:provider.stage}
+      dev:
+        log_level: debug
+        STAGE: ${self:provider.stage}
+        error_sns_topic: arn:aws:sns:us-west-2:225808214025:nonop_alert_dev
+      stg:
+        log_level: debug
+        STAGE: ${self:provider.stage}
+        error_sns_topic: arn:aws:sns:us-west-2:225808214025:nonop_alert_stg
+      prod:
+        STAGE: ${self:provider.stage}
+        error_sns_topic: arn:aws:sns:us-west-2:225808214025:nonop_alert
+  provisionedMemory:
+    local: 512
+    dev: 512
+    stg: 512
+    prod: 1024
+
+# you can add packaging information here
+# TODO 見直して整理する
+package:
+  individually: true
+  exclude:
+    - .**
+    - .idea/**
+    - README.md
+    - src/**
+    - account-handler.js
+  include:
+    - src/package.json
+    # deploy時の生成方法に注意が必要
+    - node_modules/**
+    # API標準モジュール
+    - src/model/api-accessable.js
+    - src/model/standard-model-filter.js
+    - src/model/model-utils.js
+    - src/console-log-wrapper.js
+    - src/api/handler-utils.js
+
+# TODO:
+functions:
+  getSleepByUser:
+    handler: src/api/sleep-handler.getByUser
+    name: api-functions-get-sleep-by-user${self:custom.resource-suffix.${self:provider.stage}}
+    memorySize: ${self:custom.provisionedMemory.${self:provider.stage}}
+    environment: ${self:custom.api-functions.environment.${self:provider.stage}}
+    package:
+      exclude:
+      include:
+        - src/api/sleep-account-handler.js
+        - src/model/sleep.js
+        - src/model/sleep-config.js
+    events:
+      - http:
+          path: user/{userid}/sleeps
+          method: get
+          cors: true
+          authorizer:
+            arn: ${self:custom.cognito.userpool.arn}
+
+  getSleepByDate:
+    handler: src/api/sleep-handler.getByDate
+    name: api-functions-get-sleep-by-date${self:custom.resource-suffix.${self:provider.stage}}
+    memorySize: ${self:custom.provisionedMemory.${self:provider.stage}}
+    environment: ${self:custom.api-functions.environment.${self:provider.stage}}
+    package:
+      exclude:
+      include:
+        - src/api/sleep-account-handler.js
+        - src/model/sleep.js
+        - src/model/sleep-config.js
+    events:
+      - http:
+          path: sleeps/{date}
+          method: get
+          cors: true
+          authorizer:
+            arn: ${self:custom.cognito.userpool.arn}
+
+  putMemo:
+    handler: src/api/memo-handler.put
+    name: api-functions-put-memo${self:custom.resource-suffix.${self:provider.stage}}
+    memorySize: ${self:custom.provisionedMemory.${self:provider.stage}}
+    environment: ${self:custom.api-functions.environment.${self:provider.stage}}
+    package:
+      exclude:
+      include:
+        - src/api/memo-account-handler.js
+        - src/model/memo.js
+        - src/model/memo-config.js
+    events:
+      - http:
+          path: "sleep-detail/{sleepid}/memo"
+          method: put
+          cors: true
+          authorizer:
+            arn: ${self:custom.cognito.userpool.arn}
+
+  putUser:
+    handler: src/api/user-handler.put
+    name: api-functions-put-user${self:custom.resource-suffix.${self:provider.stage}}
+    memorySize: ${self:custom.provisionedMemory.${self:provider.stage}}
+    environment: ${self:custom.api-functions.environment.${self:provider.stage}}
+    package:
+      exclude:
+      include:
+        - src/api/user-account-handler.js
+        - src/model/user.js
+        - src/model/user-config.js
+    events:
+      - http:
+          path: "user/{userid}"
+          method: put
+          cors: true
+          authorizer:
+            arn: ${self:custom.cognito.userpool.arn}
+
+  getMe:
+    handler: src/api/user-handler.getme
+    name: api-functions-get-me${self:custom.resource-suffix.${self:provider.stage}}
+    memorySize: ${self:custom.provisionedMemory.${self:provider.stage}}
+    environment: ${self:custom.api-functions.environment.${self:provider.stage}}
+    package:
+      exclude:
+      include:
+        - src/api/user-account-handler.js
+        - src/model/user.js
+        - src/model/user-config.js
+    events:
+      - http:
+          path: "user/me"
+          method: get
+          cors: true
+          authorizer:
+            arn: ${self:custom.cognito.userpool.arn}
+
+  putMe:
+    handler: src/api/user-handler.putme
+    name: api-functions-put-me${self:custom.resource-suffix.${self:provider.stage}}
+    memorySize: ${self:custom.provisionedMemory.${self:provider.stage}}
+    environment: ${self:custom.api-functions.environment.${self:provider.stage}}
+    package:
+      exclude:
+      include:
+        - src/api/user-account-handler.js
+        - src/model/user.js
+        - src/model/user-config.js
+    events:
+      - http:
+          path: "user/me"
+          method: put
+          cors: true
+          authorizer:
+            arn: ${self:custom.cognito.userpool.arn}
+
+  getUsers:
+    handler: src/api/user-handler.getAll
+    name: api-functions-get-users${self:custom.resource-suffix.${self:provider.stage}}
+    memorySize: ${self:custom.provisionedMemory.${self:provider.stage}}
+    environment: ${self:custom.api-functions.environment.${self:provider.stage}}
+    package:
+      exclude:
+      include:
+        - src/api/user-account-handler.js
+        - src/model/user.js
+        - src/model/user-config.js
+    events:
+      - http:
+          path: "users"
+          method: get
+          cors: true
+          authorizer:
+            arn: ${self:custom.cognito.userpool.arn}
+
+  getMeSleep:
+    handler: src/api/userme-sleep-handler.getMeSleep
+    name: api-functions-get-me-sleep${self:custom.resource-suffix.${self:provider.stage}}
+    memorySize: ${self:custom.provisionedMemory.${self:provider.stage}}
+    environment: ${self:custom.api-functions.environment.${self:provider.stage}}
+    package:
+      exclude:
+      include:
+        - src/api/userme-sleep-account-handler.js
+        - src/service/userme-sleep.js
+        - src/model/user.js
+        - src/model/user-config.js
+        - src/model/sleep.js
+        - src/model/sleep-config.js
+        - src/model/sleep-history.js
+        - src/model/sleep-history-config.js
+        - src/model/answer.js
+        - src/model/answer-config.js
+    events:
+      - http:
+          path: "user/me/sleep"
+          method: get
+          cors: true
+          authorizer:
+            arn: ${self:custom.cognito.userpool.arn}
+
+  getMeSleepBySleepId:
+    handler: src/api/userme-sleep-handler.getMeSleepBySleepId
+    name: api-functions-get-me-sleep-by-sleepid${self:custom.resource-suffix.${self:provider.stage}}
+    memorySize: ${self:custom.provisionedMemory.${self:provider.stage}}
+    environment: ${self:custom.api-functions.environment.${self:provider.stage}}
+    package:
+      exclude:
+      include:
+        - src/api/userme-sleep-account-handler.js
+        - src/service/userme-sleep.js
+        - src/model/user.js
+        - src/model/user-config.js
+        - src/model/sleep.js
+        - src/model/sleep-config.js
+        - src/model/sleep-history.js
+        - src/model/sleep-history-config.js
+        - src/model/answer.js
+        - src/model/answer-config.js
+    events:
+      - http:
+          path: "user/me/sleep/{sleepid}"
+          method: get
+          cors: true
+          authorizer:
+            arn: ${self:custom.cognito.userpool.arn}
+
+  getMeSleeps:
+    handler: src/api/userme-sleep-handler.getMeSleeps
+    name: api-functions-get-me-sleeps${self:custom.resource-suffix.${self:provider.stage}}
+    memorySize: ${self:custom.provisionedMemory.${self:provider.stage}}
+    environment: ${self:custom.api-functions.environment.${self:provider.stage}}
+    package:
+      exclude:
+      include:
+        - src/api/userme-sleep-account-handler.js
+        - src/service/userme-sleep.js
+        - src/model/user.js
+        - src/model/user-config.js
+        - src/model/sleep.js
+        - src/model/sleep-config.js
+        - src/model/sleep-history.js
+        - src/model/sleep-history-config.js
+        - src/model/answer.js
+        - src/model/answer-config.js
+    events:
+      - http:
+          path: "user/me/sleeps/"
+          method: get
+          cors: true
+          authorizer:
+            arn: ${self:custom.cognito.userpool.arn}
+
+  putAnswer:
+    handler: src/api/answer-handler.put
+    name: api-functions-put-answers${self:custom.resource-suffix.${self:provider.stage}}
+    memorySize: ${self:custom.provisionedMemory.${self:provider.stage}}
+    environment: ${self:custom.api-functions.environment.${self:provider.stage}}
+    package:
+      exclude:
+      include:
+        - src/api/answer-account-handler.js
+        - src/model/answer.js
+        - src/model/answer-config.js
+    events:
+      - http:
+          path: "sleep-detail/{sleepid}/answer"
+          method: put
+          cors: true
+          authorizer:
+            arn: ${self:custom.cognito.userpool.arn}
+
+  getSleepDetail:
+    handler: src/api/sleep-detail-handler.get
+    name: api-functions-get-sleep-detail${self:custom.resource-suffix.${self:provider.stage}}
+    memorySize: ${self:custom.provisionedMemory.${self:provider.stage}}
+    environment: ${self:custom.api-functions.environment.${self:provider.stage}}
+    package:
+      exclude:
+      include:
+        - src/api/sleep-detail-account-handler.js
+        - src/service/sleep-detail.js
+        - src/model/memo.js
+        - src/model/memo-config.js
+        - src/model/answer.js
+        - src/model/answer-config.js
+        - src/model/attach.js
+        - src/model/attach-config.js
+        - src/model/sleep.js
+        - src/model/sleep-config.js
+        - src/model/sleep-history.js
+        - src/model/sleep-history-config.js
+    events:
+      - http:
+          path: "sleep-detail/{sleepid}"
+          method: get
+          cors: true
+          authorizer:
+            arn: ${self:custom.cognito.userpool.arn}
+
+  # NOTE: このAPIのみcognito認証をかけない（api keyで認証する）
+  getSysromByMdid:
+    handler: src/api/merlot-sysrom-handler.get
+    name: api-functions-get-sysrom-by-mdid${self:custom.resource-suffix.${self:provider.stage}}
+    memorySize: ${self:custom.provisionedMemory.${self:provider.stage}}
+    environment: ${self:custom.api-functions.environment.${self:provider.stage}}
+    package:
+      exclude:
+      include:
+        - src/api/merlot-sysrom-account-handler.js
+        - src/service/sysrom-version.js
+        - src/model/sysrom-version.js
+        - src/model/sysrom-version-config.js
+        - src/model/user.js
+        - src/model/user-config.js
+    events:
+      - http:
+          path: "merlot/{mdid}/sysrom"
+          method: get
+          cors: true
+          private: true
+
+  getSysroms:
+    handler: src/api/sysrom-version-handler.getAll
+    name: api-functions-get-sysroms${self:custom.resource-suffix.${self:provider.stage}}
+    memorySize: ${self:custom.provisionedMemory.${self:provider.stage}}
+    environment: ${self:custom.api-functions.environment.${self:provider.stage}}
+    package:
+      exclude:
+      include:
+        - src/api/sysrom-version-account-handler.js
+        - src/model/sysrom-version.js
+        - src/model/sysrom-version-config.js
+    events:
+      - http:
+          path: sysroms
+          method: get
+          cors: true
+          authorizer:
+            arn: ${self:custom.cognito.userpool.arn}
+
+  putSysrom:
+    handler: src/api/sysrom-version-handler.put
+    name: api-functions-put-sysrom${self:custom.resource-suffix.${self:provider.stage}}
+    memorySize: ${self:custom.provisionedMemory.${self:provider.stage}}
+    environment: ${self:custom.api-functions.environment.${self:provider.stage}}
+    package:
+      exclude:
+      include:
+        - src/api/sysrom-version-account-handler.js
+        - src/model/sysrom-version.js
+        - src/model/sysrom-version-config.js
+    events:
+      - http:
+          path: sysrom
+          method: put
+          cors: true
+          authorizer:
+            arn: ${self:custom.cognito.userpool.arn}
+
+  postSysrom:
+    handler: src/api/sysrom-version-handler.post
+    name: api-functions-post-sysrom${self:custom.resource-suffix.${self:provider.stage}}
+    memorySize: ${self:custom.provisionedMemory.${self:provider.stage}}
+    environment: ${self:custom.api-functions.environment.${self:provider.stage}}
+    package:
+      exclude:
+      include:
+        - src/api/sysrom-version-account-handler.js
+        - src/model/sysrom-version.js
+        - src/model/sysrom-version-config.js
+    events:
+      - http:
+          path: sysrom
+          method: post
+          cors: true
+          authorizer:
+            arn: ${self:custom.cognito.userpool.arn}
+
+  getNotUploaded:
+    handler: src/api/not-uploaded-handler.get
+    name: api-functions-get-not-uploaded${self:custom.resource-suffix.${self:provider.stage}}
+    memorySize: ${self:custom.provisionedMemory.${self:provider.stage}}
+    environment: ${self:custom.api-functions.environment.${self:provider.stage}}
+    package:
+      exclude:
+      include:
+        - src/api/not-uploaded-account-handler.js
+        - src/service/not-uploaded.js
+        - src/model/memo.js
+        - src/model/memo-config.js
+        - src/model/sleep.js
+        - src/model/sleep-config.js
+        - src/model/user.js
+        - src/model/user-config.js
+    events:
+      - http:
+          path: "sleeps/{date}/not-uploaded"
+          method: get
+          cors: true
+          authorizer:
+            arn: ${self:custom.cognito.userpool.arn}
+
+  getQuestions:
+    handler: src/api/question-handler.get
+    name: api-functions-get-question${self:custom.resource-suffix.${self:provider.stage}}
+    memorySize: ${self:custom.provisionedMemory.${self:provider.stage}}
+    environment: ${self:custom.api-functions.environment.${self:provider.stage}}
+    package:
+      exclude:
+      include:
+        - src/api/question-account-handler.js
+        - src/model/additional-question.js
+        - src/model/additional-question-config.js
+    events:
+      - http:
+          path: "questions"
+          method: get
+          cors: true
+          authorizer:
+            arn: ${self:custom.cognito.userpool.arn}
+
+  putQuestion:
+    handler: src/api/question-handler.put
+    name: api-functions-put-question${self:custom.resource-suffix.${self:provider.stage}}
+    memorySize: ${self:custom.provisionedMemory.${self:provider.stage}}
+    environment: ${self:custom.api-functions.environment.${self:provider.stage}}
+    package:
+      exclude:
+      include:
+        - src/api/question-account-handler.js
+        - src/model/additional-question.js
+        - src/model/additional-question-config.js
+    events:
+      - http:
+          path: "question"
+          method: put
+          cors: true
+          authorizer:
+            arn: ${self:custom.cognito.userpool.arn}
+
+  getQuestionSets:
+    handler: src/api/question-set-handler.get
+    name: api-functions-get-question-set${self:custom.resource-suffix.${self:provider.stage}}
+    memorySize: ${self:custom.provisionedMemory.${self:provider.stage}}
+    environment: ${self:custom.api-functions.environment.${self:provider.stage}}
+    package:
+      exclude:
+      include:
+        - src/api/question-set-account-handler.js
+        - src/model/additional-question-set.js
+        - src/model/additional-question-set-config.js
+    events:
+      - http:
+          path: "question-sets"
+          method: get
+          cors: true
+          authorizer:
+            arn: ${self:custom.cognito.userpool.arn}
+
+  putQuestionSet:
+    handler: src/api/question-set-handler.put
+    name: api-functions-put-question-set${self:custom.resource-suffix.${self:provider.stage}}
+    memorySize: ${self:custom.provisionedMemory.${self:provider.stage}}
+    environment: ${self:custom.api-functions.environment.${self:provider.stage}}
+    package:
+      exclude:
+      include:
+        - src/api/question-set-account-handler.js
+        - src/model/additional-question-set.js
+        - src/model/additional-question-set-config.js
+    events:
+      - http:
+          path: "question-set/{set_id}"
+          method: put
+          cors: true
+          authorizer:
+            arn: ${self:custom.cognito.userpool.arn}
+
+  postAttach:
+    handler: src/api/attach-handler.post
+    name: api-functions-post-attach${self:custom.resource-suffix.${self:provider.stage}}
+    memorySize: ${self:custom.provisionedMemory.${self:provider.stage}}
+    environment: ${self:custom.api-functions.environment.${self:provider.stage}}
+    package:
+      exclude:
+      include:
+        - src/api/attach-account-handler.js
+        - src/model/attach.js
+        - src/model/attach-config.js
+    events:
+      - http:
+          path: "sleep-detail/{sleepid}/attach"
+          method: post
+          cors: true
+          authorizer:
+            arn: ${self:custom.cognito.userpool.arn}
+
+resources:
+  Resources:
+    GetSleepByUserLambdaFunction:
+      Type: "AWS::Lambda::Function"
+      Properties:
+        TracingConfig:
+          Mode: Active
+    GetSleepByDateLambdaFunction:
+      Type: "AWS::Lambda::Function"
+      Properties:
+        TracingConfig:
+          Mode: Active
+    PutMemoLambdaFunction:
+      Type: "AWS::Lambda::Function"
+      Properties:
+        TracingConfig:
+          Mode: Active
+    PutUserLambdaFunction:
+      Type: "AWS::Lambda::Function"
+      Properties:
+        TracingConfig:
+          Mode: Active
+    GetMeLambdaFunction:
+      Type: "AWS::Lambda::Function"
+      Properties:
+        TracingConfig:
+          Mode: Active
+    PutMeLambdaFunction:
+      Type: "AWS::Lambda::Function"
+      Properties:
+        TracingConfig:
+          Mode: Active
+    GetUsersLambdaFunction:
+      Type: "AWS::Lambda::Function"
+      Properties:
+        TracingConfig:
+          Mode: Active
+    GetMeSleepLambdaFunction:
+      Type: "AWS::Lambda::Function"
+      Properties:
+        TracingConfig:
+          Mode: Active
+    GetMeSleepBySleepIdLambdaFunction:
+      Type: "AWS::Lambda::Function"
+      Properties:
+        TracingConfig:
+          Mode: Active
+    GetMeSleepsLambdaFunction:
+      Type: "AWS::Lambda::Function"
+      Properties:
+        TracingConfig:
+          Mode: Active
+    PutAnswerLambdaFunction:
+      Type: "AWS::Lambda::Function"
+      Properties:
+        TracingConfig:
+          Mode: Active
+    GetSleepDetailLambdaFunction:
+      Type: "AWS::Lambda::Function"
+      Properties:
+        TracingConfig:
+          Mode: Active
+    GetSysromByMdidLambdaFunction:
+      Type: "AWS::Lambda::Function"
+      Properties:
+        TracingConfig:
+          Mode: Active
+    GetSysromsLambdaFunction:
+      Type: "AWS::Lambda::Function"
+      Properties:
+        TracingConfig:
+          Mode: Active
+    PutSysromLambdaFunction:
+      Type: "AWS::Lambda::Function"
+      Properties:
+        TracingConfig:
+          Mode: Active
+    GetNotUploadedLambdaFunction:
+      Type: "AWS::Lambda::Function"
+      Properties:
+        TracingConfig:
+          Mode: Active
+    GetQuestionsLambdaFunction:
+      Type: "AWS::Lambda::Function"
+      Properties:
+        TracingConfig:
+          Mode: Active
+    PutQuestionLambdaFunction:
+      Type: "AWS::Lambda::Function"
+      Properties:
+        TracingConfig:
+          Mode: Active
+    GetQuestionSetsLambdaFunction:
+      Type: "AWS::Lambda::Function"
+      Properties:
+        TracingConfig:
+          Mode: Active
+    PutQuestionSetLambdaFunction:
+      Type: "AWS::Lambda::Function"
+      Properties:
+        TracingConfig:
+          Mode: Active
+    PostAttachLambdaFunction:
+      Type: "AWS::Lambda::Function"
+      Properties:
+        TracingConfig:
+          Mode: Active
+
+    LogSubscriptionOfGetSleepByUser:
+      Type: "AWS::Logs::SubscriptionFilter"
+      Properties:
+        DestinationArn: ${cf:devops-functions-dev.LambdaMemoryUsedArn}
+        FilterPattern: 'REPORT'
+        LogGroupName:
+          Ref: GetSleepByUserLogGroup
+    LogSubscriptionOfGetSleepByDate:
+      Type: "AWS::Logs::SubscriptionFilter"
+      Properties:
+        DestinationArn: ${cf:devops-functions-dev.LambdaMemoryUsedArn}
+        FilterPattern: 'REPORT'
+        LogGroupName:
+          Ref: GetSleepByDateLogGroup
+    LogSubscriptionOfPutMemo:
+      Type: "AWS::Logs::SubscriptionFilter"
+      Properties:
+        DestinationArn: ${cf:devops-functions-dev.LambdaMemoryUsedArn}
+        FilterPattern: 'REPORT'
+        LogGroupName:
+          Ref: PutMemoLogGroup
+    LogSubscriptionOfPutUser:
+      Type: "AWS::Logs::SubscriptionFilter"
+      Properties:
+        DestinationArn: ${cf:devops-functions-dev.LambdaMemoryUsedArn}
+        FilterPattern: 'REPORT'
+        LogGroupName:
+          Ref: PutUserLogGroup
+    LogSubscriptionOfGetMe:
+      Type: "AWS::Logs::SubscriptionFilter"
+      Properties:
+        DestinationArn: ${cf:devops-functions-dev.LambdaMemoryUsedArn}
+        FilterPattern: 'REPORT'
+        LogGroupName:
+          Ref: GetMeLogGroup
+    LogSubscriptionOfPutMe:
+      Type: "AWS::Logs::SubscriptionFilter"
+      Properties:
+        DestinationArn: ${cf:devops-functions-dev.LambdaMemoryUsedArn}
+        FilterPattern: 'REPORT'
+        LogGroupName:
+          Ref: PutMeLogGroup
+    LogSubscriptionOfGetUsers:
+      Type: "AWS::Logs::SubscriptionFilter"
+      Properties:
+        DestinationArn: ${cf:devops-functions-dev.LambdaMemoryUsedArn}
+        FilterPattern: 'REPORT'
+        LogGroupName:
+          Ref: GetUsersLogGroup
+    LogSubscriptionOfGetMeSleep:
+      Type: "AWS::Logs::SubscriptionFilter"
+      Properties:
+        DestinationArn: ${cf:devops-functions-dev.LambdaMemoryUsedArn}
+        FilterPattern: 'REPORT'
+        LogGroupName:
+          Ref: GetMeSleepLogGroup
+    LogSubscriptionOfGetMeSleepBySleepId:
+      Type: "AWS::Logs::SubscriptionFilter"
+      Properties:
+        DestinationArn: ${cf:devops-functions-dev.LambdaMemoryUsedArn}
+        FilterPattern: 'REPORT'
+        LogGroupName:
+          Ref: GetMeSleepBySleepIdLogGroup
+    LogSubscriptionOfGetMeSleeps:
+      Type: "AWS::Logs::SubscriptionFilter"
+      Properties:
+        DestinationArn: ${cf:devops-functions-dev.LambdaMemoryUsedArn}
+        FilterPattern: 'REPORT'
+        LogGroupName:
+          Ref: GetMeSleepsLogGroup
+    LogSubscriptionOfPutAnswer:
+      Type: "AWS::Logs::SubscriptionFilter"
+      Properties:
+        DestinationArn: ${cf:devops-functions-dev.LambdaMemoryUsedArn}
+        FilterPattern: 'REPORT'
+        LogGroupName:
+          Ref: PutAnswerLogGroup
+    LogSubscriptionOfGetSleepDetail:
+      Type: "AWS::Logs::SubscriptionFilter"
+      Properties:
+        DestinationArn: ${cf:devops-functions-dev.LambdaMemoryUsedArn}
+        FilterPattern: 'REPORT'
+        LogGroupName:
+          Ref: GetSleepDetailLogGroup
+    LogSubscriptionOfGetSysromByMdid:
+      Type: "AWS::Logs::SubscriptionFilter"
+      Properties:
+        DestinationArn: ${cf:devops-functions-dev.LambdaMemoryUsedArn}
+        FilterPattern: 'REPORT'
+        LogGroupName:
+          Ref: GetSysromByMdidLogGroup
+    LogSubscriptionOfGetSysroms:
+      Type: "AWS::Logs::SubscriptionFilter"
+      Properties:
+        DestinationArn: ${cf:devops-functions-dev.LambdaMemoryUsedArn}
+        FilterPattern: 'REPORT'
+        LogGroupName:
+          Ref: GetSysromsLogGroup
+    LogSubscriptionOfPutSysrom:
+      Type: "AWS::Logs::SubscriptionFilter"
+      Properties:
+        DestinationArn: ${cf:devops-functions-dev.LambdaMemoryUsedArn}
+        FilterPattern: 'REPORT'
+        LogGroupName:
+          Ref: PutSysromLogGroup
+    LogSubscriptionOfGetNotUploaded:
+      Type: "AWS::Logs::SubscriptionFilter"
+      Properties:
+        DestinationArn: ${cf:devops-functions-dev.LambdaMemoryUsedArn}
+        FilterPattern: 'REPORT'
+        LogGroupName:
+          Ref: GetNotUploadedLogGroup
+    LogSubscriptionOfGetQuestions:
+      Type: "AWS::Logs::SubscriptionFilter"
+      Properties:
+        DestinationArn: ${cf:devops-functions-dev.LambdaMemoryUsedArn}
+        FilterPattern: 'REPORT'
+        LogGroupName:
+          Ref: GetQuestionsLogGroup
+    LogSubscriptionOfPutQuestion:
+      Type: "AWS::Logs::SubscriptionFilter"
+      Properties:
+        DestinationArn: ${cf:devops-functions-dev.LambdaMemoryUsedArn}
+        FilterPattern: 'REPORT'
+        LogGroupName:
+          Ref: PutQuestionLogGroup
+    LogSubscriptionOfGetQuestionSets:
+      Type: "AWS::Logs::SubscriptionFilter"
+      Properties:
+        DestinationArn: ${cf:devops-functions-dev.LambdaMemoryUsedArn}
+        FilterPattern: 'REPORT'
+        LogGroupName:
+          Ref: GetQuestionSetsLogGroup
+    LogSubscriptionOfPutQuestionSet:
+      Type: "AWS::Logs::SubscriptionFilter"
+      Properties:
+        DestinationArn: ${cf:devops-functions-dev.LambdaMemoryUsedArn}
+        FilterPattern: 'REPORT'
+        LogGroupName:
+          Ref: PutQuestionSetLogGroup
+    LogSubscriptionOfPostAttach:
+      Type: "AWS::Logs::SubscriptionFilter"
+      Properties:
+        DestinationArn: ${cf:devops-functions-dev.LambdaMemoryUsedArn}
+        FilterPattern: 'REPORT'
+        LogGroupName:
+          Ref: PostAttachLogGroup
